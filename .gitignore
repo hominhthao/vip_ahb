@@ -1,0 +1,14 @@
+*.log
+*.vcd
+*.wlf
+*.fsdb
+*.ucdb
+transcript
+work/
+obj_dir/
+xcelium.d/
+INCA_libs/
+simv
+simv.daidir/
+csrc/
+.DVEfiles/
