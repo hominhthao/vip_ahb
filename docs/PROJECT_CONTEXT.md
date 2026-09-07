@@ -25,13 +25,13 @@ Approved transaction scope:
 - Address and data widths are 32 bits. Only WORD transfers are supported;
   the HSIZE signal encoding width is 3 bits and the active transfer size is WORD.
 
-| Field | Role | Width / values | Randomized |
-| --- | --- | --- | --- |
-| `addr` | Stimulus | 32 bits | Yes |
-| `write_data` | Stimulus | 32 bits | Yes |
-| `direction` | Stimulus | READ or WRITE | Yes |
-| `read_data` | Result | 32 bits | No |
-| `response` | Result | Response information | No |
+| Field         | Role      | Width / values        | Randomized |
+| ---           | ---       | ---                   | ---        |
+| `addr`        | Stimulus  | 32 bits               | Yes        |
+| `write_data`  | Stimulus  | 32 bits               | Yes        |
+| `direction`   | Stimulus  | READ or WRITE         | Yes        |
+| `read_data`   | Result    | 32 bits               | No         |
+| `response`    | Result    | Response information  | No         |
 
 Use separate `write_data` and `read_data`, not a shared generic `data` field.
 HBURST is transaction-level protocol information restricted to SINGLE;
