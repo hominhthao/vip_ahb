@@ -1,8 +1,8 @@
-module fpt_ahb_transaction_smoke_top;
+module fpt_ahb_master_transaction_smoke_top;
     import uvm_pkg::*;
     import fpt_ahb_package::*;
 
-    function automatic void log_transaction(string label, fpt_ahb_transaction tr);
+    function automatic void log_transaction(string label, fpt_ahb_master_transaction tr);
         $display("%s direction=%s addr=0x%h write_data=0x%h size=%s burst=%s read_data=0x%h response=%s",
                  label, tr.direction.name(), tr.addr, tr.write_data,
                  tr.size.name(), tr.burst.name(), tr.read_data, tr.response.name());
@@ -16,8 +16,8 @@ module fpt_ahb_transaction_smoke_top;
         $fatal(1, "Print output missing '%s': %s", expected, text);
     endfunction : expect_text
 
-    function automatic void check_compare(string label, fpt_ahb_transaction lhs,
-                                          fpt_ahb_transaction rhs, bit expected);
+    function automatic void check_compare(string label, fpt_ahb_master_transaction lhs,
+                                          fpt_ahb_master_transaction rhs, bit expected);
         string lhs_before;
         string rhs_before;
         lhs_before = lhs.sprint();
@@ -30,12 +30,12 @@ module fpt_ahb_transaction_smoke_top;
     endfunction : check_compare
 
     task automatic check_utilities();
-        fpt_ahb_transaction lhs;
-        fpt_ahb_transaction rhs;
+        fpt_ahb_master_transaction lhs;
+        fpt_ahb_master_transaction rhs;
         uvm_sequence_item unrelated;
         string printed;
-        lhs = fpt_ahb_transaction::type_id::create("lhs");
-        rhs = fpt_ahb_transaction::type_id::create("rhs");
+        lhs = fpt_ahb_master_transaction::type_id::create("lhs");
+        rhs = fpt_ahb_master_transaction::type_id::create("rhs");
         unrelated = new("unrelated");
 
         lhs.addr = 'h100;
@@ -124,12 +124,80 @@ module fpt_ahb_transaction_smoke_top;
         $display("PASS: request compare and full-field print checks");
     endtask : check_utilities
 
+    function automatic void check_all_fields(string label, fpt_ahb_master_transaction actual,
+                                             fpt_ahb_master_transaction expected);
+        if (actual.addr !== expected.addr)
+            $fatal(1, "%s: addr was not preserved", label);
+        if (actual.direction !== expected.direction)
+            $fatal(1, "%s: direction was not preserved", label);
+        if (actual.write_data !== expected.write_data)
+            $fatal(1, "%s: write_data was not preserved", label);
+        if (actual.size !== expected.size)
+            $fatal(1, "%s: size was not preserved", label);
+        if (actual.burst !== expected.burst)
+            $fatal(1, "%s: burst was not preserved", label);
+        if (actual.read_data !== expected.read_data)
+            $fatal(1, "%s: read_data was not preserved", label);
+        if (actual.response !== expected.response)
+            $fatal(1, "%s: response was not preserved", label);
+    endfunction : check_all_fields
+
+    task automatic check_copy_clone();
+        fpt_ahb_master_transaction src;
+        fpt_ahb_master_transaction dst;
+        fpt_ahb_master_transaction cloned;
+        uvm_object clone_object;
+        src = fpt_ahb_master_transaction::type_id::create("copy_src");
+        dst = fpt_ahb_master_transaction::type_id::create("copy_dst");
+        if (src == null || dst == null || src == dst)
+            $fatal(1, "Copy requires distinct non-null objects");
+
+        for (int i = 0; i < 2; i++) begin
+            src.addr = (i == 0) ? 'h100 : 'h204;
+            src.direction = (i == 0) ? FPT_AHB_READ : FPT_AHB_WRITE;
+            src.write_data = (i == 0) ? 'h12345678 : 'h87654321;
+            // Invalid enum state is deliberate: copying is not randomization
+            // and must preserve stored values, not repair them to defaults.
+            src.size = (i == 0) ? FPT_AHB_WORD : fpt_ahb_size_e'(3'b000);
+            src.burst = (i == 0) ? FPT_AHB_SINGLE : fpt_ahb_burst_e'(3'b001);
+            src.read_data = (i == 0) ? 'hA5A55A5A : 'hxxxxzzzz;
+            src.response = (i == 0) ? FPT_AHB_ERROR : FPT_AHB_OKAY;
+            dst.addr = 'h300;
+            dst.direction = (i == 0) ? FPT_AHB_WRITE : FPT_AHB_READ;
+            dst.write_data = '0;
+            dst.size = (i == 0) ? fpt_ahb_size_e'(3'b000) : FPT_AHB_WORD;
+            dst.burst = (i == 0) ? fpt_ahb_burst_e'(3'b001) : FPT_AHB_SINGLE;
+            dst.read_data = '0;
+            dst.response = (i == 0) ? FPT_AHB_OKAY : FPT_AHB_ERROR;
+
+            dst.copy(src);
+            check_all_fields("copy", dst, src);
+            $display("PASS: master copy all fields case %0d", i);
+
+            clone_object = src.clone();
+            if (!$cast(cloned, clone_object) || cloned == null)
+                $fatal(1, "Clone returned null or incorrect type");
+            if (cloned == src || cloned == dst)
+                $fatal(1, "Clone did not create a distinct object");
+            check_all_fields("clone", cloned, src);
+            cloned.addr = 'h400;
+            cloned.direction = dst.direction == FPT_AHB_READ ? FPT_AHB_WRITE : FPT_AHB_READ;
+            cloned.write_data = '1;
+            cloned.size = fpt_ahb_size_e'(3'b111);
+            cloned.burst = fpt_ahb_burst_e'(3'b111);
+            cloned.read_data = '0;
+            cloned.response = dst.response == FPT_AHB_OKAY ? FPT_AHB_ERROR : FPT_AHB_OKAY;
+            check_all_fields("original after clone mutation", src, dst);
+            $display("PASS: master clone all fields and independence case %0d", i);
+        end
+    endtask : check_copy_clone
+
     initial begin
-        fpt_ahb_transaction tr;
+        fpt_ahb_master_transaction tr;
         int read_count = 0;
         int write_count = 0;
 
-        tr = fpt_ahb_transaction::type_id::create("tr");
+        tr = fpt_ahb_master_transaction::type_id::create("tr");
         if (tr == null)
             $fatal(1, "Factory returned null");
         if (tr.size !== FPT_AHB_WORD || tr.burst !== FPT_AHB_SINGLE)
@@ -204,8 +272,9 @@ module fpt_ahb_transaction_smoke_top;
         log_transaction("RESTORED", tr);
 
         check_utilities();
-        $display("PASS: transaction smoke test (100 random items: READ=%0d WRITE=%0d; forced READ/WRITE; 3 expected rejections)",
+        check_copy_clone();
+        $display("PASS: master transaction smoke test (100 random items: READ=%0d WRITE=%0d; forced READ/WRITE; 3 expected rejections)",
                  read_count, write_count);
         $finish;
     end
-endmodule : fpt_ahb_transaction_smoke_top
+endmodule : fpt_ahb_master_transaction_smoke_top

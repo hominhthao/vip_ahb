@@ -1,10 +1,10 @@
-`ifndef FPT_AHB_TRANSACTION_SVH
-`define FPT_AHB_TRANSACTION_SVH
+`ifndef FPT_AHB_MASTER_TRANSACTION_SVH
+`define FPT_AHB_MASTER_TRANSACTION_SVH
 
 // One item requests one AHB-Lite SINGLE, WORD-sized transfer.
-class fpt_ahb_transaction extends uvm_sequence_item;
+class fpt_ahb_master_transaction extends uvm_sequence_item;
 
-    `uvm_object_utils(fpt_ahb_transaction)
+    `uvm_object_utils(fpt_ahb_master_transaction)
 
     rand bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr;
 
@@ -30,17 +30,36 @@ class fpt_ahb_transaction extends uvm_sequence_item;
         burst == FPT_AHB_SINGLE;
     }
 
-    extern function new(string name = "fpt_ahb_transaction");
+    extern function new(string name = "fpt_ahb_master_transaction");
+    extern virtual function void do_copy(uvm_object rhs);
     extern virtual function void do_print(uvm_printer printer);
     extern virtual function bit do_compare(uvm_object rhs, uvm_comparer comparer);
 
-endclass : fpt_ahb_transaction
+endclass : fpt_ahb_master_transaction
 
-function fpt_ahb_transaction::new(string name = "fpt_ahb_transaction");
+function fpt_ahb_master_transaction::new(string name = "fpt_ahb_master_transaction");
     super.new(name);
 endfunction : new
 
-function void fpt_ahb_transaction::do_print(uvm_printer printer);
+function void fpt_ahb_master_transaction::do_copy(uvm_object rhs);
+    fpt_ahb_master_transaction rhs_tr;
+
+    if (!$cast(rhs_tr, rhs) || rhs_tr == null) begin
+        `uvm_fatal("FPT_AHB_COPY", "Expected a non-null fpt_ahb_master_transaction")
+        return;
+    end
+    super.do_copy(rhs);
+    // Copy all stored fields, including data ignored by compare().
+    addr = rhs_tr.addr;
+    direction = rhs_tr.direction;
+    write_data = rhs_tr.write_data;
+    size = rhs_tr.size;
+    burst = rhs_tr.burst;
+    read_data = rhs_tr.read_data;
+    response = rhs_tr.response;
+endfunction : do_copy
+
+function void fpt_ahb_master_transaction::do_print(uvm_printer printer);
     super.do_print(printer);
     printer.print_field("addr", addr, $bits(addr), UVM_HEX);
     printer.print_field("write_data", write_data, $bits(write_data), UVM_HEX);
@@ -55,12 +74,12 @@ function void fpt_ahb_transaction::do_print(uvm_printer printer);
         printer.print_string("response", response.name());
 endfunction : do_print
 
-function bit fpt_ahb_transaction::do_compare(uvm_object rhs, uvm_comparer comparer);
-    fpt_ahb_transaction rhs_tr;
+function bit fpt_ahb_master_transaction::do_compare(uvm_object rhs, uvm_comparer comparer);
+    fpt_ahb_master_transaction rhs_tr;
     bit same;
 
     if (!$cast(rhs_tr, rhs) || rhs_tr == null) begin
-        comparer.print_msg("rhs is not a non-null fpt_ahb_transaction");
+        comparer.print_msg("rhs is not a non-null fpt_ahb_master_transaction");
         return 0;
     end
 
