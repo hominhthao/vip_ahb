@@ -19,11 +19,15 @@ The project is a new implementation, not a direct refactor of the existing AHB V
 
 v0.0 focuses on bringing up the basic AHB-Lite VIP foundation.
 
-Approved transaction scope:
+Approved transaction scope (lead clarification supersedes the previous shared
+transaction decision and freeze in local commit `68244ce`):
 
-- One transaction item represents one AHB-Lite SINGLE transfer, either READ or WRITE.
+- Master and Slave use separate transaction classes, each for one AHB-Lite
+  SINGLE transfer, either READ or WRITE.
 - Address and data widths are 32 bits. Only WORD transfers are supported;
   the HSIZE signal encoding width is 3 bits and the active transfer size is WORD.
+
+Master Transaction (`fpt_ahb_master_transaction`):
 
 | Field         | Role      | Width / values        | Randomized |
 | ---           | ---       | ---                   | ---        |
@@ -32,6 +36,27 @@ Approved transaction scope:
 | `direction`   | Stimulus  | READ or WRITE         | Yes        |
 | `read_data`   | Result    | 32 bits               | No         |
 | `response`    | Result    | Response information  | No         |
+| `size`        | Transfer  | WORD                  | No         |
+| `burst`       | Transfer  | SINGLE                | No         |
+
+Slave Transaction (`fpt_ahb_slave_transaction`):
+
+| Field | Role | Randomized |
+| --- | --- | --- |
+| `addr`, `direction`, `write_data` | Captured Master request context | No |
+| `size`, `burst` | Captured context, limited to WORD/SINGLE | No |
+| `read_data` | Slave-generated READ response data, 32 bits | Yes |
+| `response` | Slave-generated OKAY/ERROR response | Yes |
+| `wait_cycles` | Requested wait count, unsigned integer | Yes |
+
+Slave randomization validates aligned READ/WRITE, WORD/SINGLE context and leaves
+that context unchanged. Soft defaults are `wait_cycles == 0` and
+`response == FPT_AHB_OKAY`; inline constraints may override them.
+No hard maximum or MAX_WAIT is introduced. No maximum wait-count policy has been specified; the
+unsigned 32-bit representation is an implementation choice, not a timing budget.
+The future default Slave Sequence will select practical response controls.
+Implementing that sequence, Drivers, Sequencers, interface changes, and a memory
+model is outside this transaction-layer task.
 
 Use separate `write_data` and `read_data`, not a shared generic `data` field.
 HBURST is transaction-level protocol information restricted to SINGLE;
@@ -162,17 +187,24 @@ Completed:
 - coding-rule collection;
 - AI working rules.
 
-Current phase:
+Transaction layer — Thao: split into dedicated Master and Slave classes following
+lead clarification. The earlier shared-transaction freeze is superseded.
+Master retains the prior randomization, request-only compare, and full-field print.
+Slave separates captured request context from randomized response controls. Its
+compare checks context, response, and wait count; write data only for WRITE, and
+read data only for two READ plans with OKAY responses.
+Both classes implement complete-state copy/clone support: all seven Master fields
+and all eight Slave fields are copied, including fields ignored by compare.
+Separate transaction smoke tops use the existing Python/VCS flow.
+Slave now has full-field print/sprint support for all eight stored fields, including
+decimal wait_cycles. Compile-only and both transaction smoke tests passed with
+VCS Full64/UVM 1.2, seed 1, including the final pre-commit rerun. Transaction layer
+is complete and frozen by the owner on 2026-09-08. The split-transaction checkpoint
+is authorized for local commit only; no push is included.
 
-**Freeze project documentation and task definitions before implementation.**
+Interface remains owned by the teammate; its implementation/integration status
+is not established by this transaction test. Bus READ/WRITE verification is a
+separate integration task.
 
-Implementation status:
-
-**Not started yet.**
-
-Next development work:
-
-- Transaction Item — Thao
-- Interface — teammate
-
-Both will proceed in parallel after the initial task definitions are approved.
+Current semantics, commands, verification evidence, and limitations are recorded
+in `docs/REPO_CURRENT_STATE.md`.

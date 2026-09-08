@@ -89,24 +89,51 @@ Interface
 
 ### Transaction / Driver Responsibilities
 
-One transaction represents one AHB-Lite SINGLE transfer.
-The Transaction describes WHAT transfer is requested; the Driver controls HOW
-that transfer is driven cycle-by-cycle. Approved fields and transfer limits are
-defined in `docs/PROJECT_CONTEXT.md`.
+Master and Slave transactions are separate, as required by lead clarification
+superseding the shared-transaction decision in local commit `68244ce`.
+Each describes one AHB-Lite SINGLE transfer. Master generates request fields and
+stores observed results. Slave holds non-random captured request context and
+randomizable read data, response, and wait count. The future Slave default sequence
+will use the Slave Transaction; its implementation is deferred.
+Drivers control how transfers and responses are driven cycle-by-cycle.
+Approved fields and transfer limits are defined in `docs/PROJECT_CONTEXT.md`.
 
 HTRANS is not a transaction field in v0.0. The Driver generates the required
 transfer phase, such as NONSEQ when executing a transaction, and controls IDLE
 behavior when no transaction is active.
 
 HTRANS sequencing, IDLE behavior, wait-state cycle handling, reset handling,
-and timeout handling belong to Driver/interface behavior, not transaction stimulus.
+and timeout handling belong to Driver/interface behavior. Slave `wait_cycles`
+describes a requested count; the transaction itself does not wait or drive signals.
 Later burst support may extend Driver behavior to generate SEQ phases.
 
 The Monitor reconstructs observed bus activity back into transaction form.
 
-A shared protocol types/definitions file is desired for direction, HSIZE,
-HBURST, HRESP, and address/data width definitions where appropriate. Its exact
-file name, location, and implementation remain undecided.
+The v0.0 implementation declares direction, size, burst, and response
+enums directly in `vip/src/fpt_ahb_package.sv`, before including both
+`fpt_ahb_master_transaction.svh` and `fpt_ahb_slave_transaction.svh`.
+Overrideable address/data width defaults are in `vip/include/fpt_ahb_macros.svh`.
+There is no separate protocol types file or common transaction base layer.
+The old generic class is replaced, without a compatibility alias.
+
+Master Transaction `compare()` checks request fields only; result fields are ignored.
+`print()` displays all stored fields without implying transfer completion.
+Standalone transaction smoke verification does not require FU2 or an interface.
+Slave compare always checks address, direction, size, burst, response, and wait
+count. It compares write data for two WRITEs and read data for two READs with
+OKAY responses. Slave `print()`/`sprint()` display all eight stored fields:
+hex address/data, valid enum names (binary fallback for unnamed values), and
+decimal wait_cycles. Printing does not modify state or imply a completed transfer.
+Both transaction classes implement extern `do_copy()`: validate/cast the source,
+call `super.do_copy(rhs)`, then copy every custom field unconditionally. Master
+copies seven fields; Slave also copies wait_cycles. Inherited UVM `clone()` uses
+this copy behavior to populate a distinct object. Copy semantics do not follow
+the conditional field filtering used by compare and do not randomize or repair state.
+Slave response controls default softly to zero waits and OKAY; inline constraints
+may override either. No hard maximum or MAX_WAIT is defined. Maximum/timeout
+policy belongs to the later Slave configuration/Driver design.
+The future default sequence/Driver must define context delivery, response policy,
+wait limits, reset/timeout handling, and sequence startup phase before integration.
 
 ## 3. v0.0 Boundary
 

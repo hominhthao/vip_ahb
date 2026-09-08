@@ -27,6 +27,7 @@ package fpt_ahb_package;
         FPT_AHB_ERROR = 1'b1
     } fpt_ahb_response_e;
 
-    `include "fpt_ahb_transaction.svh"
+    `include "fpt_ahb_master_transaction.svh"
+    `include "fpt_ahb_slave_transaction.svh"
 
 endpackage : fpt_ahb_package
