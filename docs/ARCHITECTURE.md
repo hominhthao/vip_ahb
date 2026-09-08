@@ -104,9 +104,14 @@ Later burst support may extend Driver behavior to generate SEQ phases.
 
 The Monitor reconstructs observed bus activity back into transaction form.
 
-A shared protocol types/definitions file is desired for direction, HSIZE,
-HBURST, HRESP, and address/data width definitions where appropriate. Its exact
-file name, location, and implementation remain undecided.
+The frozen v0.0 implementation declares direction, size, burst, and response
+enums directly in `vip/src/fpt_ahb_package.sv`, before including the transaction.
+Overrideable address/data width defaults are in `vip/include/fpt_ahb_macros.svh`.
+There is no separate protocol types file or master/slave transaction split.
+
+Transaction `compare()` checks request fields only; result fields are ignored.
+`print()` displays all stored fields without implying transfer completion.
+Standalone transaction smoke verification does not require FU2 or an interface.
 
 ## 3. v0.0 Boundary
 

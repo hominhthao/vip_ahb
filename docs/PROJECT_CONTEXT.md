@@ -162,17 +162,14 @@ Completed:
 - coding-rule collection;
 - AI working rules.
 
-Current phase:
+Transaction Item — Thao: **complete and frozen by owner on 2026-09-08**.
+Macros/enums, attributes/constraints, request-only compare, full-field print,
+and standalone READ/WRITE randomization smoke verification are implemented.
+VCS Full64 + UVM 1.2 compile/simulation passed with seed 1 and default 32-bit widths.
 
-**Freeze project documentation and task definitions before implementation.**
+Interface remains owned by the teammate; its implementation/integration status
+is not established by this transaction test. Bus READ/WRITE verification is a
+separate integration task.
 
-Implementation status:
-
-**Not started yet.**
-
-Next development work:
-
-- Transaction Item — Thao
-- Interface — teammate
-
-Both will proceed in parallel after the initial task definitions are approved.
+Frozen semantics, commands, verification evidence, and limitations are recorded
+in `docs/REPO_CURRENT_STATE.md`.
