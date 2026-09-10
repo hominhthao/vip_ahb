@@ -109,6 +109,48 @@ Later burst support may extend Driver behavior to generate SEQ phases.
 
 The Monitor reconstructs observed bus activity back into transaction form.
 
+### Shared Memory Ownership
+
+The Environment will create one `fpt_ahb_common_memory` object and distribute
+the same handle through the Slave Agent to the Slave Driver.
+
+```text
+Environment
+    +-- common_memory (one runtime object)
+    +-- Slave Agent
+            +-- Slave Driver -> same common_memory handle
+```
+
+The Slave Driver will commit successful completed WRITEs to common memory. For
+READs, it will snapshot common-memory data and drive that value on HRDATA. ERROR
+or reset-aborted WRITEs must not update memory. Response generation and
+`wait_cycles` remain Slave Transaction/Driver responsibilities.
+
+The Master Driver does not receive the common-memory handle. It obtains
+`master_transaction.read_data` only by sampling HRDATA on the AHB interface.
+Runtime Environment/Agent `config_db` wiring is deferred until those components
+are integrated.
+
+### Scoreboard and Reference Model
+
+The v0.0 Scoreboard checks two independent completed bus observations in order:
+
+```text
+Master Monitor -> master_fifo --+
+                                +-> Scoreboard -> private reference memory
+Slave Monitor  -> slave_fifo  --+
+```
+
+The Scoreboard reference memory is a separate associative array. It does not
+read or share the Slave common-memory object, so a Slave storage error cannot
+also become the expected result. It compares request context from both Monitors,
+including WRITE data, then applies response-aware reference-model rules.
+
+One Master, one Slave, SINGLE transfers, and in-order completion allow FIFO-order
+pairing in v0.0. The Slave input must be reconstructed from interface signals by
+the Slave Monitor, not copied from a Driver response-plan object. Environment
+connections to both analysis FIFOs remain an integration task.
+
 The v0.0 implementation declares direction, size, burst, and response
 enums directly in `vip/src/fpt_ahb_package.sv`, before including both
 `fpt_ahb_master_transaction.svh` and `fpt_ahb_slave_transaction.svh`.
@@ -150,9 +192,12 @@ Driver
 Monitor
 Environment
 Basic Scoreboard/Coverage/SVA integration
+Shared common memory
 ```
 
-No common memory model is included in v0.0.
+The v0.0 common memory is deliberately limited to sparse word-data storage keyed
+by the full byte address, with `write()`, `read()`, and `clear()`. It has no clock,
+reset, protocol, byte-enable, region, protection, ECC, or timing behavior.
 
 ## 4. After v0.0
 
@@ -166,7 +211,7 @@ More complete burst support
 Stronger protocol assertions
 Expanded functional coverage
 More configurable agents
-Common memory model in v0.1+
+Richer memory policies and features
 Improved integration/debug infrastructure
 ```
 
