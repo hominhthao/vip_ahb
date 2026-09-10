@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile the AHB VIP transaction package with VCS; do not run simulation."""
+"""Compile the reusable AHB VIP library package; do not run simulation."""
 
 from pathlib import Path
 import shlex
@@ -8,7 +8,7 @@ import subprocess
 
 def main():
     project_root = Path(__file__).resolve().parent.parent
-    build_dir = project_root / "work" / "transaction_compile"
+    build_dir = project_root / "work" / "package_compile"
     build_dir.mkdir(parents=True, exist_ok=True)
 
     top_file = build_dir / "fpt_ahb_compile_top.sv"
@@ -35,6 +35,7 @@ endmodule : fpt_ahb_compile_top
         "+vcs+lic+wait",
         f"+incdir+{project_root / 'vip' / 'include'}",
         f"+incdir+{project_root / 'vip' / 'src'}",
+        str(project_root / "vip" / "include" / "fpt_ahb_if.svh"),
         str(project_root / "vip" / "src" / "fpt_ahb_package.sv"),
         str(top_file),
         "-top", "fpt_ahb_compile_top",

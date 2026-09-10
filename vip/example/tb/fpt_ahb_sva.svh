@@ -130,12 +130,6 @@ interface fpt_ahb_sva #(
 
     cover_multi_wait:  cover property (@(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {2'b10, 2'b11} && hready) ##1 (!hready)[*2:$] ##1 (hready));
 
-    final begin
-        $display("==========================================================");
-        $display("[FPT_AHB_SVA] Simulation finished!");
-        $display("[FPT_AHB_SVA] Global Coverage reached: %3.2f %%", $get_coverage());
-        $display("==========================================================");
-    end
 
 endinterface
 

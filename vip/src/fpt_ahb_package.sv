@@ -27,31 +27,18 @@ package fpt_ahb_package;
     `include "fpt_ahb_master_transaction.svh"
     `include "fpt_ahb_slave_transaction.svh"
 
-    `include "fpt_ahb_scoreboard.svh"
+    `include "master_agent/fpt_ahb_master_agent_cfg.svh"
+    `include "master_agent/fpt_ahb_master_driver.svh"
+    `include "master_agent/fpt_ahb_master_monitor.svh"
+    `include "master_agent/fpt_ahb_master_agent.svh"
 
-    `include "fpt_ahb_master_agent_cfg.svh"
-    `include "fpt_ahb_master_driver.svh"
-    `include "fpt_ahb_master_monitor.svh"
-    `include "fpt_ahb_master_agent.svh"
+    `include "slave_agent/fpt_ahb_slave_agent_cfg.svh"
+    `include "slave_agent/fpt_ahb_slave_driver.svh"
+    `include "slave_agent/fpt_ahb_slave_monitor.svh"
+    `include "slave_agent/fpt_ahb_slave_agent.svh"
 
-    `include "fpt_ahb_slave_agent_cfg.svh"
-    `include "fpt_ahb_slave_driver.svh"
-    `include "fpt_ahb_slave_monitor.svh"
-    `include "fpt_ahb_slave_agent.svh"
-
-    `include "fpt_ahb_master_base_seq.svh"
-    `include "fpt_ahb_slave_base_seq.svh"
-    `include "fpt_ahb_slave_mem_seq.svh"
-
-    `include "fpt_ahb_env.svh"
-    `include "fpt_ahb_base_test.svh"
-
-    `include "fpt_ahb_read_after_write_seq.svh"
-    `include "fpt_ahb_single_write_seq.svh"
-    `include "fpt_ahb_random_rw_seq.svh"
-    
-    `include "fpt_ahb_read_after_write_test.svh"
-    `include "fpt_ahb_single_write_test.svh"
-    `include "fpt_ahb_random_rw_test.svh"
+    `include "sequence_lib/fpt_ahb_master_base_seq.svh"
+    `include "sequence_lib/fpt_ahb_slave_base_seq.svh"
+    `include "sequence_lib/fpt_ahb_slave_mem_seq.svh"
 
 endpackage : fpt_ahb_package

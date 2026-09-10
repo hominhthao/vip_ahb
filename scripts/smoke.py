@@ -15,8 +15,9 @@ def run_smoke(project_root, role):
         "-ntb_opts", "uvm-1.2", "+vcs+lic+wait",
         f"+incdir+{project_root / 'vip' / 'include'}",
         f"+incdir+{project_root / 'vip' / 'src'}",
+        str(project_root / "vip" / "include" / "fpt_ahb_if.svh"),
         str(project_root / "vip" / "src" / "fpt_ahb_package.sv"),
-        str(project_root / "vip" / "example" / "tb" /
+        str(project_root / "vip" / "example" / "test" /
             f"{top}.sv"),
         "-top", top,
         "-o", "simv", "-l", "compile.log",

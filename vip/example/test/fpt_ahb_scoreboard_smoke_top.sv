@@ -3,6 +3,7 @@
 module fpt_ahb_scoreboard_smoke_top;
     import uvm_pkg::*;
     import fpt_ahb_package::*;
+    import fpt_ahb_example_package::*;
 
     class fpt_ahb_scoreboard_expected_error_catcher extends uvm_report_catcher;
         int unsigned caught_count;
