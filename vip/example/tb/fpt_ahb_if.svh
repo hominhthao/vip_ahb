@@ -3,7 +3,7 @@
 
 `include "fpt_ahb_macros.svh"
 
-interface AhbInterface(input hclk, input hresetn);
+interface fpt_ahb_if (input hclk, input hresetn);
 
   logic [`FPT_AHB_VIP_ADDR_WIDTH-1:0] haddr;
   logic [`FPT_AHB_VIP_NO_OF_SLAVES-1:0] hselx;
@@ -32,8 +32,8 @@ interface AhbInterface(input hclk, input hresetn);
 
   clocking cb_slave @(posedge hclk);
       default input #1step output #1step;
-      input  haddr, htrans, hwrite, hsize, hburst, hprot, hwdata, hselx, hmastlock, hexcl, hwstrb, hmaster, hnonsec;
-      output hrdata, hready, hresp, hexokay, hreadyout;
+      input  haddr, hready, htrans, hwrite, hsize, hburst, hprot, hwdata, hselx, hmastlock, hexcl, hwstrb, hmaster, hnonsec;
+      output hrdata, hresp, hexokay, hreadyout;
   endclocking
 
   clocking cb_monitor @(posedge hclk);

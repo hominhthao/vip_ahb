@@ -15,16 +15,10 @@ class fpt_ahb_master_driver extends uvm_driver #(fpt_ahb_master_transaction);
   extern virtual task data_phase_thread();
 endclass
 
-//------------------------------------------------------------------------------
-// Constructor: Initializes the driver component
-//------------------------------------------------------------------------------
 function fpt_ahb_master_driver::new(string name = "fpt_ahb_master_driver", uvm_component parent = null);
   super.new(name, parent);
 endfunction
 
-//------------------------------------------------------------------------------
-// Build Phase: Retrieves the agent configuration containing the virtual interface
-//------------------------------------------------------------------------------
 function void fpt_ahb_master_driver::build_phase(uvm_phase phase);
   super.build_phase(phase);
   if (cfg == null) begin
@@ -34,9 +28,6 @@ function void fpt_ahb_master_driver::build_phase(uvm_phase phase);
   end
 endfunction
 
-//------------------------------------------------------------------------------
-// Run Phase: Splits execution into two concurrent threads for AHB pipelining
-//------------------------------------------------------------------------------
 task fpt_ahb_master_driver::run_phase(uvm_phase phase);
   reset_signals();
   fork
@@ -45,9 +36,6 @@ task fpt_ahb_master_driver::run_phase(uvm_phase phase);
   join_none
 endtask
 
-//------------------------------------------------------------------------------
-// Reset Signals: Clears bus and flushes the pipeline queue during reset
-//------------------------------------------------------------------------------
 task fpt_ahb_master_driver::reset_signals();
   wait (cfg.vif.hresetn === 1'b0); 
   cfg.vif.cb_master.htrans <= 2'b00; 
@@ -56,22 +44,16 @@ task fpt_ahb_master_driver::reset_signals();
   wait (cfg.vif.hresetn === 1'b1);
 endtask
 
-//------------------------------------------------------------------------------
-// Address Phase Thread: Polls sequencer and drives address pipeline
-//------------------------------------------------------------------------------
 task fpt_ahb_master_driver::address_phase_thread();
   fpt_ahb_master_transaction req;
   
   forever begin
     @(cfg.vif.cb_master);
-    
     if (cfg.vif.cb_master.hready === 1'b0) continue;
 
     seq_item_port.try_next_item(req);
     
     if (req != null) begin
-      `uvm_info("DRV_ADDR", $sformatf("Driving Address: 'h%0h", req.addr), UVM_HIGH)
-      
       cfg.vif.cb_master.haddr  <= req.addr;
       cfg.vif.cb_master.hwrite <= (req.direction == FPT_AHB_WRITE) ? 1'b1 : 1'b0;
       cfg.vif.cb_master.hsize  <= req.size;
@@ -89,9 +71,6 @@ task fpt_ahb_master_driver::address_phase_thread();
   end
 endtask
 
-//------------------------------------------------------------------------------
-// Data Phase Thread: Pops queue, executes data transfers, and checks timeout
-//------------------------------------------------------------------------------
 task fpt_ahb_master_driver::data_phase_thread();
   fpt_ahb_master_transaction current_tx;
   int timeout_cnt;
@@ -101,19 +80,24 @@ task fpt_ahb_master_driver::data_phase_thread();
     current_tx = pipeline_q.pop_front();
     timeout_cnt = 0;
     
-    `uvm_info("DRV_DATA", $sformatf("Driving/Reading Data for Addr: 'h%0h", current_tx.addr), UVM_HIGH)
-
+    // BẮT BUỘC: Phải đợi 1 chu kỳ để Pha Địa Chỉ kết thúc trên Bus, 
+    // vì Address mới chỉ được chích lên ở ngay delta cycle hiện tại!
+    @(cfg.vif.cb_master);
+    while (cfg.vif.cb_master.hready === 1'b0) @(cfg.vif.cb_master);
+    
+    // --- Bắt đầu Data Phase ---
     if (current_tx.direction == FPT_AHB_WRITE) begin
       cfg.vif.cb_master.hwdata <= current_tx.write_data;
     end
     
+    // Chờ Slave phản hồi Data Phase
     do begin
       @(cfg.vif.cb_master);
       if (cfg.vif.cb_master.hready === 1'b0) begin
         timeout_cnt++;
         if (timeout_cnt >= cfg.wait_timeout_cycles) begin
-          `uvm_error("DRV_TIMEOUT", $sformatf("Slave Timeout! hready stuck at 0 for %0d cycles at Addr: 'h%0h", timeout_cnt, current_tx.addr))
-          break; // Break to avoid infinite simulation hang
+          `uvm_error("DRV_TIMEOUT", "Slave Timeout! hready stuck at 0")
+          break; 
         end
       end
     end while (cfg.vif.cb_master.hready === 1'b0);
@@ -122,6 +106,8 @@ task fpt_ahb_master_driver::data_phase_thread();
       current_tx.read_data = cfg.vif.cb_master.hrdata;
     end
     current_tx.response = (cfg.vif.cb_master.hresp == 1'b1) ? FPT_AHB_ERROR : FPT_AHB_OKAY;
+    
+    seq_item_port.put_response(current_tx);
   end
 endtask
 
