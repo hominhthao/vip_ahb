@@ -7,6 +7,7 @@ class fpt_ahb_master_agent_cfg extends uvm_object;
   uvm_active_passive_enum is_active = UVM_ACTIVE;
   bit has_coverage = 1;
   bit has_checks   = 1;
+  int wait_timeout_cycles = 1000;
   virtual AhbInterface vif;
 
   extern function new(string name = "fpt_ahb_master_agent_cfg");
