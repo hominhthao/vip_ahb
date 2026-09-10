@@ -27,6 +27,8 @@ package fpt_ahb_package;
     `include "fpt_ahb_master_transaction.svh"
     `include "fpt_ahb_slave_transaction.svh"
 
+    `include "fpt_ahb_scoreboard.svh"
+
     `include "fpt_ahb_master_agent_cfg.svh"
     `include "fpt_ahb_master_driver.svh"
     `include "fpt_ahb_master_monitor.svh"

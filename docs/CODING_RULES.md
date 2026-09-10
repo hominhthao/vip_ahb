@@ -150,16 +150,20 @@ Do not implement compile infrastructure during unrelated tickets.
 
 ## 12. v0.0 Scope Rule
 
-The common memory model is **NOT** part of v0.0.
+The approved v0.0 common memory is intentionally minimal:
 
-Do not implement:
+- use one Environment-owned runtime object shared with Slave consumers;
+- use sparse full-byte-address storage and the project width macros;
+- support only `write()`, `read()`, and `clear()`;
+- keep bus timing, reset, response, and wait-state behavior in bus components.
 
-- memory-model classes;
-- memory-model placeholders;
-- unused memory-model configuration;
+Do not add unapproved memory features such as:
+
+- byte enables;
+- regions or protection policies;
+- ECC;
+- protocol timing;
 - future-version infrastructure.
-
-Memory-model work is planned for a later release.
 
 ## 13. General Rule
 
