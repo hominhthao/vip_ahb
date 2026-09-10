@@ -5,8 +5,6 @@ class fpt_ahb_master_driver extends uvm_driver #(fpt_ahb_master_transaction);
   `uvm_component_utils(fpt_ahb_master_driver)
 
   fpt_ahb_master_agent_cfg cfg;
-  
-  // Hàng đợi kết nối giữa 2 luồng Address và Data
   fpt_ahb_master_transaction pipeline_q[$];
 
   extern function new(string name = "fpt_ahb_master_driver", uvm_component parent = null);
@@ -54,7 +52,7 @@ task fpt_ahb_master_driver::reset_signals();
   wait (cfg.vif.hresetn === 1'b0); 
   cfg.vif.cb_master.htrans <= 2'b00; 
   cfg.vif.cb_master.hselx  <= 0;
-  pipeline_q.delete(); // Xóa sạch hàng đợi
+  pipeline_q.delete(); 
   wait (cfg.vif.hresetn === 1'b1);
 endtask
 
@@ -67,10 +65,8 @@ task fpt_ahb_master_driver::address_phase_thread();
   forever begin
     @(cfg.vif.cb_master);
     
-    // Nếu Slave đang hold hready = 0 (bận xử lý lệnh trước) -> Bắt buộc đứng im
     if (cfg.vif.cb_master.hready === 1'b0) continue;
 
-    // Dùng try_next_item thay vì get_next_item để không bị treo luồng khi Sequencer rỗng
     seq_item_port.try_next_item(req);
     
     if (req != null) begin
@@ -81,47 +77,47 @@ task fpt_ahb_master_driver::address_phase_thread();
       cfg.vif.cb_master.hsize  <= req.size;
       cfg.vif.cb_master.hburst <= req.burst;
       cfg.vif.cb_master.hprot  <= 4'b0011; 
-      cfg.vif.cb_master.htrans <= 2'b10; // TR_NONSEQ
+      cfg.vif.cb_master.htrans <= 2'b10; 
       cfg.vif.cb_master.hselx  <= 1'b1;  
       
-      // Chuyển giao dịch vào Hàng đợi cho Data Thread xử lý ở nhịp sau
       pipeline_q.push_back(req);
-      
-      // Báo cáo hoàn tất để Sequencer nhả lệnh tiếp theo ngay lập tức (Pipelining)
       seq_item_port.item_done(); 
     end else begin
-      // Không có lệnh -> Trả Bus về trạng thái nghỉ (IDLE)
-      cfg.vif.cb_master.htrans <= 2'b00; // TR_IDLE
+      cfg.vif.cb_master.htrans <= 2'b00; 
       cfg.vif.cb_master.hselx  <= 1'b0;
     end
   end
 endtask
 
 //------------------------------------------------------------------------------
-// Data Phase Thread: Pops queue and executes data transfers
+// Data Phase Thread: Pops queue, executes data transfers, and checks timeout
 //------------------------------------------------------------------------------
 task fpt_ahb_master_driver::data_phase_thread();
   fpt_ahb_master_transaction current_tx;
+  int timeout_cnt;
   
   forever begin
-    // Ngủ đông chờ cho đến khi có lệnh lọt vào hàng đợi
     wait (pipeline_q.size() > 0);
     current_tx = pipeline_q.pop_front();
+    timeout_cnt = 0;
     
     `uvm_info("DRV_DATA", $sformatf("Driving/Reading Data for Addr: 'h%0h", current_tx.addr), UVM_HIGH)
 
-    // Ép Dữ liệu lên Bus (nếu là lệnh Ghi) ngay tại nhịp Clock hiện tại
     if (current_tx.direction == FPT_AHB_WRITE) begin
       cfg.vif.cb_master.hwdata <= current_tx.write_data;
     end
     
-    // Phải chờ ít nhất 1 chu kỳ clock (bản chất của Data Phase nằm sau Address Phase)
-    // Và tiếp tục chờ nếu hready = 0 (Wait States)
     do begin
       @(cfg.vif.cb_master);
+      if (cfg.vif.cb_master.hready === 1'b0) begin
+        timeout_cnt++;
+        if (timeout_cnt >= cfg.wait_timeout_cycles) begin
+          `uvm_error("DRV_TIMEOUT", $sformatf("Slave Timeout! hready stuck at 0 for %0d cycles at Addr: 'h%0h", timeout_cnt, current_tx.addr))
+          break; // Break to avoid infinite simulation hang
+        end
+      end
     end while (cfg.vif.cb_master.hready === 1'b0);
     
-    // Lấy kết quả trả về từ Slave
     if (current_tx.direction == FPT_AHB_READ) begin
       current_tx.read_data = cfg.vif.cb_master.hrdata;
     end
