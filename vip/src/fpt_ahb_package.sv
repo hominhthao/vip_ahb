@@ -48,8 +48,10 @@ package fpt_ahb_package;
 
     `include "fpt_ahb_read_after_write_seq.svh"
     `include "fpt_ahb_single_write_seq.svh"
+    `include "fpt_ahb_random_rw_seq.svh"
     
     `include "fpt_ahb_read_after_write_test.svh"
     `include "fpt_ahb_single_write_test.svh"
+    `include "fpt_ahb_random_rw_test.svh"
 
 endpackage : fpt_ahb_package

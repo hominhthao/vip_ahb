@@ -10,11 +10,10 @@ def main():
     
     top = "fpt_ahb_tb_top"
     
-    subprocess.run(["rm", "-rf", "csrc", "simv", "simv.daidir"], cwd=build_dir)
     compile_command = [
         "vcs", "-full64", "-sverilog", "-timescale=1ns/1ps",
         "-ntb_opts", "uvm-1.2", "+vcs+lic+wait",
-        "-debug_access+all", "-kdb", "-cm", "assert", 
+        "-debug_access+all", "-kdb", "-cm", "assert",
         f"+incdir+{project_root / 'vip/include'}",
         f"+incdir+{project_root / 'vip/src'}",
         f"+incdir+{project_root / 'vip/example/tb'}",
@@ -33,22 +32,24 @@ def main():
     
     run_command = [
         "./simv", 
-        "+UVM_TESTNAME=fpt_ahb_single_write_test", 
-        "-l", "run.log", "-cm", "assert"
+        "+UVM_TESTNAME=fpt_ahb_random_rw_test", 
+        "-l", "run.log", "-cm", "assert", "+ntb_random_seed_automatic"
     ]
     
     print(f"Starting Build & Run at: {build_dir}", flush=True)
+    
+    subprocess.run(["rm", "-rf", "csrc", "simv", "simv.daidir"], cwd=build_dir)
     
     for stage, cmd in [("COMPILE", compile_command), ("SIMULATION", run_command)]:
         print(f"\n[{stage}] Executing command:\n{shlex.join(cmd)}", flush=True)
         try:
             result = subprocess.run(cmd, cwd=build_dir, check=False)
         except OSError as e:
-            print(f"OS Error: Unable to execute command (is vcs installed?): {e}", flush=True)
+            print(f"OS Error: Unable to execute command: {e}", flush=True)
             return 1
             
         if result.returncode != 0:
-            print(f"FAILED at stage {stage}! Check the detailed log at: {build_dir}/{'compile' if stage=='COMPILE' else 'run'}.log", flush=True)
+            print(f"FAILED at stage {stage}! Check log.", flush=True)
             return result.returncode
             
     print(f"\nSUCCESS! Simulation completed smoothly.")

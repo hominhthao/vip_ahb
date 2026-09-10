@@ -13,7 +13,7 @@ def main():
     compile_command = [
         "vcs", "-full64", "-sverilog", "-timescale=1ns/1ps",
         "-ntb_opts", "uvm-1.2", "+vcs+lic+wait",
-        "-debug_access+all",  # Enable debug access for waveform dumping
+        "-debug_access+all", "-cm", "assert", # Enable debug access and coverage
         f"+incdir+{project_root / 'vip/include'}",
         f"+incdir+{project_root / 'vip/src'}",
         f"+incdir+{project_root / 'vip/example/tb'}",
@@ -33,7 +33,7 @@ def main():
     run_command = [
         "./simv", 
         "+UVM_TESTNAME=fpt_ahb_read_after_write_test", 
-        "-l", "run.log"
+        "-l", "run.log", "-cm", "assert"
     ]
     
     print(f"Starting Build & Run at: {build_dir}", flush=True)
@@ -51,7 +51,7 @@ def main():
             return result.returncode
             
     print(f"\nSUCCESS! Simulation completed smoothly.")
-    print(f"To view the waveform, navigate to {build_dir} and run: verdi -ssf ahb_vip.vcd", flush=True)
+    print(f"To view the waveform, navigate to {build_dir} and run: verdi -ssf ahb_vip.fsdb", flush=True)
     return 0
 
 if __name__ == "__main__":
