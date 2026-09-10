@@ -1,28 +1,26 @@
 `ifndef FPT_AHB_SVA_SVH
 `define FPT_AHB_SVA_SVH
 
+`include "fpt_ahb_macros.svh"
+
 interface fpt_ahb_sva #(
-    parameter AHB_ADDR_WIDTH = 32,
-    parameter AHB_DATA_WIDTH = 32,
-    parameter HPROT_WIDTH = 4,
-    parameter HMASTER_WIDTH = 4
 )(
     input logic hclk,
     input logic hresetn,
     input logic hready,
-    input logic [AHB_ADDR_WIDTH-1:0] haddr,
+    input logic [`FPT_AHB_VIP_ADDR_WIDTH-1:0] haddr,
     input logic [1:0] htrans,
     input logic hwrite,
     input logic [2:0] hsize,
     input logic [2:0] hburst,
-    input logic [HPROT_WIDTH-1:0] hprot,
-    input logic [HMASTER_WIDTH-1:0] hmaster,
+    input logic [`FPT_AHB_VIP_HPROT_WIDTH-1:0] hprot,
+    input logic [`FPT_AHB_VIP_HMASTER_WIDTH-1:0] hmaster,
     input logic hmastlock,
-    input logic [AHB_DATA_WIDTH-1:0] hwdata,
+    input logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] hwdata,
     input logic hresp,
     input logic hexcl,
     input logic hselx, 
-    input logic [(AHB_DATA_WIDTH/8)-1:0] hwstrb,
+    input logic [(`FPT_AHB_VIP_DATA_WIDTH/8)-1:0] hwstrb,
     input logic hexokay
 );
 
