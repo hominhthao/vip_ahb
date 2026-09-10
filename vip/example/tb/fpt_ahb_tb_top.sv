@@ -7,6 +7,7 @@
 module fpt_ahb_tb_top;
   import uvm_pkg::*;
   import fpt_ahb_package::*;
+  import fpt_ahb_example_package::*;
 
   logic hclk;
   logic hresetn;
@@ -34,10 +35,12 @@ module fpt_ahb_tb_top;
     run_test();
   end
 
+`ifdef FPT_AHB_ENABLE_FSDB
   initial begin
     $fsdbDumpfile("ahb_vip.fsdb");
     $fsdbDumpvars(0, fpt_ahb_tb_top);
   end
+`endif
 
   fpt_ahb_sva ahb_sva_inst (
     .hclk     (ahb_if.hclk),
