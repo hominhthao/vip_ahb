@@ -11,7 +11,7 @@ def main():
     build_dir = project_root / "work" / "common_memory_smoke"
     build_dir.mkdir(parents=True, exist_ok=True)
     top = "fpt_ahb_common_memory_smoke_top"
-    # The package includes Master classes referencing AhbInterface. Compile that
+    # The package includes Master classes referencing fpt_ahb_if. Compile that
     # existing declaration and provide its dependencies without creating an Agent.
     compile_command = [
         "vcs", "-full64", "-sverilog",
@@ -20,7 +20,6 @@ def main():
         f"+incdir+{project_root / 'vip/src'}",
         f"+incdir+{project_root / 'vip/example/tb'}",
         f"+incdir+{project_root / 'vip/example/env/master_agent'}",
-        f"+incdir+{project_root / 'vip/example/env/scoreboard'}",
         str(project_root / "vip/example/tb/fpt_ahb_if.svh"),
         str(project_root / "vip/src/fpt_ahb_package.sv"),
         str(project_root / "vip/example/test" / f"{top}.sv"),
