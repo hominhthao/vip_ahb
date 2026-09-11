@@ -14,6 +14,8 @@ class fpt_ahb_scoreboard extends uvm_scoreboard;
 
     // This expected state is intentionally independent of common memory.
     data_t reference_memory[addr_t];
+    // Each test must declare its total before sending observations.
+    int expected_count = -1;
     int unsigned checked_count;
     int unsigned passed_count;
     int unsigned mismatch_count;
@@ -194,6 +196,12 @@ endfunction : report_mismatch
 
 function void fpt_ahb_scoreboard::check_phase(uvm_phase phase);
     super.check_phase(phase);
+    if (expected_count < 0)
+        `uvm_error("FPT_AHB_SCB_COUNT", "Expected transfer count was not configured")
+    else if (checked_count != expected_count)
+        `uvm_error("FPT_AHB_SCB_COUNT",
+                   $sformatf("Completed transfer count mismatch: expected=%0d checked=%0d",
+                             expected_count, checked_count))
     if (waiting_for_slave || master_fifo.used() != 0 || slave_fifo.used() != 0)
         `uvm_error("FPT_AHB_SCB_PENDING",
                    $sformatf(
@@ -204,8 +212,8 @@ endfunction : check_phase
 function void fpt_ahb_scoreboard::report_phase(uvm_phase phase);
     super.report_phase(phase);
     `uvm_info("FPT_AHB_SCB_SUMMARY",
-              $sformatf("checked=%0d passed=%0d mismatches=%0d",
-                        checked_count, passed_count, mismatch_count), UVM_LOW)
+              $sformatf("expected=%0d checked=%0d passed=%0d mismatches=%0d",
+                        expected_count, checked_count, passed_count, mismatch_count), UVM_LOW)
 endfunction : report_phase
 
 `endif

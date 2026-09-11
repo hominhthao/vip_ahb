@@ -128,6 +128,7 @@ module fpt_ahb_scoreboard_smoke_top;
         fpt_ahb_common_memory common_memory;
 
         phase.raise_objection(this);
+        scoreboard.expected_count = 14;
 
         // A different common-memory value must not influence the Scoreboard.
         common_memory = fpt_ahb_common_memory::type_id::create("common_memory");
