@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compatibility wrapper for the random READ/WRITE integration test."""
 
-from run_vip import main
+from run_raw import main
 
 
 if __name__ == "__main__":
