@@ -7,7 +7,6 @@ class fpt_ahb_base_test extends uvm_test;
     fpt_ahb_env env;
     fpt_ahb_master_agent_cfg master_cfg;
     fpt_ahb_slave_agent_cfg  slave_cfg;
-    fpt_ahb_common_memory    mem;
 
     extern function new(string name = "fpt_ahb_base_test", uvm_component parent = null);
     extern virtual function void build_phase(uvm_phase phase);
@@ -25,7 +24,7 @@ function fpt_ahb_base_test::new(string name = "fpt_ahb_base_test", uvm_component
 endfunction
 
 //------------------------------------------------------------------------------
-// Build Phase: Creates environment, configs, memory and sets up default sequences
+// Build Phase: Creates environment, configs and sets up default sequences
 //------------------------------------------------------------------------------
 function void fpt_ahb_base_test::build_phase(uvm_phase phase);
     super.build_phase(phase);
@@ -44,10 +43,6 @@ function void fpt_ahb_base_test::build_phase(uvm_phase phase);
     slave_cfg = fpt_ahb_slave_agent_cfg::type_id::create("slave_cfg");
     slave_cfg.vif = master_cfg.vif; // Slave xài chung 1 sợi cáp Bus với Master
     uvm_config_db#(fpt_ahb_slave_agent_cfg)::set(this, "env.slave_agent*", "cfg", slave_cfg);
-
-    // 3. Khởi tạo "Tủ lạnh" (Common Memory) và ném xuống cho Bếp trưởng (Slave Sequencer)
-    mem = fpt_ahb_common_memory::type_id::create("mem");
-    uvm_config_db#(fpt_ahb_common_memory)::set(this, "env.slave_agent.sequencer*", "mem", mem);
 
     // 4. Tuyệt chiêu: Ép Bếp trưởng tự động phục vụ (Chạy tự động Mem Sequence)
     uvm_config_db#(uvm_object_wrapper)::set(this,

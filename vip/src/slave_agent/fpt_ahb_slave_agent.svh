@@ -9,6 +9,7 @@ class fpt_ahb_slave_agent extends uvm_agent;
   fpt_ahb_slave_monitor   monitor;
 
   fpt_ahb_slave_agent_cfg cfg;
+    fpt_ahb_common_memory mem;
   uvm_analysis_port #(fpt_ahb_slave_transaction) ap;
 
   extern function new(string name = "fpt_ahb_slave_agent", uvm_component parent = null);
@@ -37,6 +38,10 @@ function void fpt_ahb_slave_agent::build_phase(uvm_phase phase);
   monitor = fpt_ahb_slave_monitor::type_id::create("monitor", this);
 
   if (cfg.is_active == UVM_ACTIVE) begin
+    if (!uvm_config_db#(fpt_ahb_common_memory)::get(this, "", "mem", mem) || mem == null) begin
+        `uvm_fatal("NO_MEM", "Slave Agent requires the Environment common-memory handle")
+    end
+    uvm_config_db#(fpt_ahb_common_memory)::set(this, "driver", "mem", mem);
     sequencer = uvm_sequencer#(fpt_ahb_slave_transaction)::type_id::create("sequencer", this);
     driver    = fpt_ahb_slave_driver::type_id::create("driver", this);
   end

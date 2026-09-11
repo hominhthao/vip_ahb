@@ -5,6 +5,7 @@ class fpt_ahb_slave_driver extends uvm_driver #(fpt_ahb_slave_transaction);
   `uvm_component_utils(fpt_ahb_slave_driver)
 
   fpt_ahb_slave_agent_cfg cfg;
+    fpt_ahb_common_memory mem;
   fpt_ahb_slave_transaction request_q[$];
 
   extern function new(string name = "fpt_ahb_slave_driver", uvm_component parent = null);
@@ -21,6 +22,9 @@ endfunction
 
 function void fpt_ahb_slave_driver::build_phase(uvm_phase phase);
   super.build_phase(phase);
+    if (!uvm_config_db#(fpt_ahb_common_memory)::get(this, "", "mem", mem) || mem == null) begin
+        `uvm_fatal("NO_MEM", "Slave Driver requires the Environment common-memory handle")
+    end
   if (cfg == null) begin
     if (!uvm_config_db#(fpt_ahb_slave_agent_cfg)::get(this, "", "cfg", cfg)) begin
       `uvm_fatal("NO_CFG", {"Configuration must be set for: ", get_full_name(), ".cfg"})
@@ -94,8 +98,14 @@ task fpt_ahb_slave_driver::data_phase_thread();
     // 1. Gửi thông tin Address Phase lên Sequence
     seq_item_port.put_response(req);
     
-    // 2. Chờ Sequence cấp Data và Wait cycles
+    // 2. Receive response controls from the Sequence.
     seq_item_port.get_next_item(req);
+
+    // Snapshot storage before driving READ data; keep it in the completed item.
+    if (req.direction == FPT_AHB_READ) begin
+        req.read_data = mem.read(req.addr);
+        `uvm_info("SLV_MEM", $sformatf("Reading 'h%0h from memory at 'h%0h", req.read_data, req.addr), UVM_HIGH)
+    end
     
     repeat (req.wait_cycles) begin
        cfg.vif.cb_slave.hreadyout <= 1'b0;
@@ -113,7 +123,12 @@ task fpt_ahb_slave_driver::data_phase_thread();
     @(cfg.vif.cb_slave);
     
     if (req.direction == FPT_AHB_WRITE) begin
-       req.write_data = cfg.vif.cb_slave.hwdata;
+        req.write_data = cfg.vif.cb_slave.hwdata;
+        // Commit sampled data before processing the next request.
+        if (req.response == FPT_AHB_OKAY) begin
+            mem.write(req.addr, req.write_data);
+            `uvm_info("SLV_MEM", $sformatf("Writing 'h%0h to memory at 'h%0h", req.write_data, req.addr), UVM_HIGH)
+        end
     end
     
     seq_item_port.item_done();

@@ -33,20 +33,10 @@ task fpt_ahb_slave_mem_seq::body();
       `uvm_error("SEQ_RAND", "Randomization failed")
     end
     
-    if (req.direction == FPT_AHB_READ) begin
-      req.read_data = mem.read(req.addr);
-      `uvm_info("SLV_MEM", $sformatf("Reading 'h%0h from memory at 'h%0h", req.read_data, req.addr), UVM_HIGH)
-    end
-    
     finish_item(req);
     
     // 3. Chờ Driver báo cáo Data Phase hoàn tất
     get_response(req);
-    
-    if (req.direction == FPT_AHB_WRITE) begin
-      `uvm_info("SLV_MEM", $sformatf("Writing 'h%0h to memory at 'h%0h", req.write_data, req.addr), UVM_HIGH)
-      mem.write(req.addr, req.write_data);
-    end
   end
 endtask
 

@@ -7,6 +7,7 @@ class fpt_ahb_env extends uvm_env;
     fpt_ahb_master_agent master_agent;
     fpt_ahb_slave_agent  slave_agent;
     fpt_ahb_scoreboard   scoreboard;
+    fpt_ahb_common_memory mem;
 
     extern function new(string name = "fpt_ahb_env", uvm_component parent = null);
     extern virtual function void build_phase(uvm_phase phase);
@@ -25,6 +26,10 @@ endfunction
 //------------------------------------------------------------------------------
 function void fpt_ahb_env::build_phase(uvm_phase phase);
     super.build_phase(phase);
+
+    // One runtime memory; Slave consumers receive this same handle.
+    mem = fpt_ahb_common_memory::type_id::create("mem");
+    uvm_config_db#(fpt_ahb_common_memory)::set(this, "slave_agent", "mem", mem);
 
     master_agent = fpt_ahb_master_agent::type_id::create("master_agent", this);
     slave_agent = fpt_ahb_slave_agent::type_id::create("slave_agent", this);
