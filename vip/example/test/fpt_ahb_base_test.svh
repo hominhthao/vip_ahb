@@ -46,9 +46,9 @@ function void fpt_ahb_base_test::build_phase(uvm_phase phase);
 
     // 4. Tuyệt chiêu: Ép Bếp trưởng tự động phục vụ (Chạy tự động Mem Sequence)
     uvm_config_db#(uvm_object_wrapper)::set(this,
-        "env.slave_agent.sequencer.run_phase",
-        "default_sequence",
-        fpt_ahb_slave_mem_seq::type_id::get());
+                                            "env.slave_agent.sequencer.run_phase",
+                                            "default_sequence",
+                                            fpt_ahb_slave_mem_seq::type_id::get());
 
     // 5. Khởi tạo Environment (Chiếc hộp bọc tất cả lại)
     env = fpt_ahb_env::type_id::create("env", this);

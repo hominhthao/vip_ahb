@@ -22,7 +22,7 @@ module fpt_ahb_slave_transaction_smoke_top;
         string row_type;
         string row_size;
         string row_value;
-        int start = 0;
+        int    start = 0;
         for (int i = 0; i < printed.len(); i++) begin
             if (printed.getc(i) == 10 || i == printed.len() - 1) begin
                 if ($sscanf(printed.substr(start, i), "%s %s %s %s",

@@ -19,7 +19,7 @@ class fpt_ahb_scoreboard extends uvm_scoreboard;
     int unsigned checked_count;
     int unsigned passed_count;
     int unsigned mismatch_count;
-    bit waiting_for_slave;
+    bit          waiting_for_slave;
 
     extern function new(string name = "fpt_ahb_scoreboard",
                         uvm_component parent = null);
@@ -28,9 +28,9 @@ class fpt_ahb_scoreboard extends uvm_scoreboard;
     extern virtual function void check_phase(uvm_phase phase);
     extern virtual function void report_phase(uvm_phase phase);
     extern function void check_transfer(
-        fpt_ahb_master_transaction master_tx,
-        fpt_ahb_slave_transaction slave_tx
-    );
+                                        fpt_ahb_master_transaction master_tx,
+                                        fpt_ahb_slave_transaction slave_tx
+                                        );
     extern function void report_mismatch(string message);
 endclass : fpt_ahb_scoreboard
 
@@ -60,11 +60,11 @@ task fpt_ahb_scoreboard::run_phase(uvm_phase phase);
 endtask : run_phase
 
 function void fpt_ahb_scoreboard::check_transfer(
-    fpt_ahb_master_transaction master_tx,
-    fpt_ahb_slave_transaction slave_tx
-);
+                                                 fpt_ahb_master_transaction master_tx,
+                                                 fpt_ahb_slave_transaction slave_tx
+                                                 );
     int unsigned mismatch_count_before;
-    bit request_matches;
+    bit          request_matches;
     data_t expected_data;
 
     mismatch_count_before = mismatch_count;
@@ -78,18 +78,18 @@ function void fpt_ahb_scoreboard::check_transfer(
 
     `uvm_info("FPT_AHB_SCB_COMPARE",
               $sformatf(
-                  {"BEGIN transfer #%0d\n",
-                   "  MASTER: addr=0x%0h direction=%s size=%s burst=%s ",
-                   "write_data=0x%0h read_data=0x%0h response=%s\n",
-                   "  SLAVE : addr=0x%0h direction=%s size=%s burst=%s ",
-                   "write_data=0x%0h read_data=0x%0h response=%s wait_cycles=%0d"},
-                  checked_count + 1,
-                  master_tx.addr, master_tx.direction.name(), master_tx.size.name(),
-                  master_tx.burst.name(), master_tx.write_data, master_tx.read_data,
-                  master_tx.response.name(),
-                  slave_tx.addr, slave_tx.direction.name(), slave_tx.size.name(),
-                  slave_tx.burst.name(), slave_tx.write_data, slave_tx.read_data,
-                  slave_tx.response.name(), slave_tx.wait_cycles), UVM_LOW)
+                        {"BEGIN transfer #%0d\n",
+                         "  MASTER: addr=0x%0h direction=%s size=%s burst=%s ",
+                         "write_data=0x%0h read_data=0x%0h response=%s\n",
+                         "  SLAVE : addr=0x%0h direction=%s size=%s burst=%s ",
+                         "write_data=0x%0h read_data=0x%0h response=%s wait_cycles=%0d"},
+                        checked_count + 1,
+                        master_tx.addr, master_tx.direction.name(), master_tx.size.name(),
+                        master_tx.burst.name(), master_tx.write_data, master_tx.read_data,
+                        master_tx.response.name(),
+                        slave_tx.addr, slave_tx.direction.name(), slave_tx.size.name(),
+                        slave_tx.burst.name(), slave_tx.write_data, slave_tx.read_data,
+                        slave_tx.response.name(), slave_tx.wait_cycles), UVM_LOW)
 
     if (master_tx.addr !== slave_tx.addr) begin
         report_mismatch($sformatf("Address mismatch: master=0x%0h slave=0x%0h",
@@ -131,10 +131,10 @@ function void fpt_ahb_scoreboard::check_transfer(
         if (master_tx.direction == FPT_AHB_WRITE) begin
             `uvm_info("FPT_AHB_SCB_DATA",
                       $sformatf(
-                          {"WRITE addr=0x%0h expected(master)=0x%0h ",
-                           "actual(slave)=0x%0h; updating reference memory"},
-                          master_tx.addr, master_tx.write_data,
-                          slave_tx.write_data), UVM_LOW)
+                                {"WRITE addr=0x%0h expected(master)=0x%0h ",
+                                 "actual(slave)=0x%0h; updating reference memory"},
+                                master_tx.addr, master_tx.write_data,
+                                slave_tx.write_data), UVM_LOW)
             reference_memory[master_tx.addr] = master_tx.write_data;
         end else if (master_tx.direction == FPT_AHB_READ) begin
             if (reference_memory.exists(master_tx.addr))
@@ -144,23 +144,23 @@ function void fpt_ahb_scoreboard::check_transfer(
 
             `uvm_info("FPT_AHB_SCB_DATA",
                       $sformatf(
-                          {"READ addr=0x%0h expected(reference)=0x%0h ",
-                           "actual(master HRDATA)=0x%0h actual(slave HRDATA)=0x%0h"},
-                          master_tx.addr, expected_data, master_tx.read_data,
-                          slave_tx.read_data), UVM_LOW)
+                                {"READ addr=0x%0h expected(reference)=0x%0h ",
+                                 "actual(master HRDATA)=0x%0h actual(slave HRDATA)=0x%0h"},
+                                master_tx.addr, expected_data, master_tx.read_data,
+                                slave_tx.read_data), UVM_LOW)
 
             if (master_tx.read_data !== slave_tx.read_data)
                 report_mismatch($sformatf(
-                    "Observed read data mismatch at 0x%0h: master=0x%0h slave=0x%0h",
-                    master_tx.addr, master_tx.read_data, slave_tx.read_data));
+                                          "Observed read data mismatch at 0x%0h: master=0x%0h slave=0x%0h",
+                                          master_tx.addr, master_tx.read_data, slave_tx.read_data));
             if (master_tx.read_data !== expected_data)
                 report_mismatch($sformatf(
-                    "Master read mismatch at 0x%0h: expected=0x%0h actual=0x%0h",
-                    master_tx.addr, expected_data, master_tx.read_data));
+                                          "Master read mismatch at 0x%0h: expected=0x%0h actual=0x%0h",
+                                          master_tx.addr, expected_data, master_tx.read_data));
             if (slave_tx.read_data !== expected_data)
                 report_mismatch($sformatf(
-                    "Slave read mismatch at 0x%0h: expected=0x%0h actual=0x%0h",
-                    master_tx.addr, expected_data, slave_tx.read_data));
+                                          "Slave read mismatch at 0x%0h: expected=0x%0h actual=0x%0h",
+                                          master_tx.addr, expected_data, slave_tx.read_data));
         end
     end else if (request_matches &&
                  master_tx.direction == FPT_AHB_READ &&
@@ -168,9 +168,9 @@ function void fpt_ahb_scoreboard::check_transfer(
                  slave_tx.response === FPT_AHB_ERROR) begin
         `uvm_info("FPT_AHB_SCB_DATA",
                   $sformatf(
-                      {"READ addr=0x%0h response=ERROR; read_data comparison skipped ",
-                       "master=0x%0h slave=0x%0h"},
-                      master_tx.addr, master_tx.read_data, slave_tx.read_data),
+                            {"READ addr=0x%0h response=ERROR; read_data comparison skipped ",
+                             "master=0x%0h slave=0x%0h"},
+                            master_tx.addr, master_tx.read_data, slave_tx.read_data),
                   UVM_LOW)
     end
 
@@ -205,8 +205,8 @@ function void fpt_ahb_scoreboard::check_phase(uvm_phase phase);
     if (waiting_for_slave || master_fifo.used() != 0 || slave_fifo.used() != 0)
         `uvm_error("FPT_AHB_SCB_PENDING",
                    $sformatf(
-                       "Unpaired observations remain: waiting_for_slave=%0b master=%0d slave=%0d",
-                       waiting_for_slave, master_fifo.used(), slave_fifo.used()))
+                             "Unpaired observations remain: waiting_for_slave=%0b master=%0d slave=%0d",
+                             waiting_for_slave, master_fifo.used(), slave_fifo.used()))
 endfunction : check_phase
 
 function void fpt_ahb_scoreboard::report_phase(uvm_phase phase);

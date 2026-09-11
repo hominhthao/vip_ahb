@@ -4,28 +4,28 @@
 `include "fpt_ahb_macros.svh"
 
 interface fpt_ahb_sva #(
-)(
-    input logic hclk,
-    input logic hresetn,
-    input logic hready,
-    input logic [`FPT_AHB_VIP_ADDR_WIDTH-1:0] haddr,
-    input logic [1:0] htrans,
-    input logic hwrite,
-    input logic [2:0] hsize,
-    input logic [2:0] hburst,
-    input logic [`FPT_AHB_VIP_HPROT_WIDTH-1:0] hprot,
-    input logic [`FPT_AHB_VIP_HMASTER_WIDTH-1:0] hmaster,
-    input logic hmastlock,
-    input logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] hwdata,
-    input logic hresp,
-    input logic hexcl,
-    input logic hselx, 
-    input logic [(`FPT_AHB_VIP_DATA_WIDTH/8)-1:0] hwstrb,
-    input logic hexokay
-);
+                        )(
+                          input logic                                   hclk,
+                          input logic                                   hresetn,
+                          input logic                                   hready,
+                          input logic [`FPT_AHB_VIP_ADDR_WIDTH-1:0]     haddr,
+                          input logic [1:0]                             htrans,
+                          input logic                                   hwrite,
+                          input logic [2:0]                             hsize,
+                          input logic [2:0]                             hburst,
+                          input logic [`FPT_AHB_VIP_HPROT_WIDTH-1:0]    hprot,
+                          input logic [`FPT_AHB_VIP_HMASTER_WIDTH-1:0]  hmaster,
+                          input logic                                   hmastlock,
+                          input logic [`FPT_AHB_VIP_DATA_WIDTH-1:0]     hwdata,
+                          input logic                                   hresp,
+                          input logic                                   hexcl,
+                          input logic                                   hselx,
+                          input logic [(`FPT_AHB_VIP_DATA_WIDTH/8)-1:0] hwstrb,
+                          input logic                                   hexokay
+                          );
 
     import uvm_pkg::*;
-    `include "uvm_macros.svh"
+`include "uvm_macros.svh"
 
     localparam TR_IDLE   = 2'b00;
     localparam TR_BUSY   = 2'b01;
@@ -47,16 +47,16 @@ interface fpt_ahb_sva #(
 
     assert_htrans_not_x: assert property (p_htrans_not_x) else `uvm_error("AHB_SVA", "htrans contains X");
     cover_htrans_not_x:  cover property (p_htrans_not_x);
-    
+
     assert_hwrite_not_x: assert property (p_hwrite_not_x) else `uvm_error("AHB_SVA", "hwrite contains X");
     cover_hwrite_not_x:  cover property (p_hwrite_not_x);
-    
+
     assert_hsize_not_x:  assert property (p_hsize_not_x)  else `uvm_error("AHB_SVA", "hsize contains X");
     cover_hsize_not_x:   cover property (p_hsize_not_x);
-    
+
     assert_hburst_not_x: assert property (p_hburst_not_x) else `uvm_error("AHB_SVA", "hburst contains X");
     cover_hburst_not_x:  cover property (p_hburst_not_x);
-    
+
     assert_haddr_not_x:  assert property (p_haddr_not_x)  else `uvm_error("AHB_SVA", "haddr contains X");
     cover_haddr_not_x:   cover property (p_haddr_not_x);
 
@@ -81,7 +81,7 @@ interface fpt_ahb_sva #(
     // --- Write Data valid ---
     sequence s_write_addr_phase; (hselx && hready && (htrans inside {TR_NONSEQ, TR_SEQ}) && hwrite); endsequence
     property p_hwdata_valid; @(posedge hclk) disable iff (!hresetn) s_write_addr_phase ##1 (hready [->1]) |-> !($isunknown(hwdata)); endproperty
-    
+
     assert_hwdata_valid: assert property (p_hwdata_valid) else `uvm_error("AHB_SVA", "hwdata contains X during write");
     cover_hwdata_valid:  cover property (p_hwdata_valid);
 
@@ -103,7 +103,7 @@ interface fpt_ahb_sva #(
     // --- Responses ---
     property p_hresp_err_2cycle; @(posedge hclk) disable iff (!hresetn) (hresp == RESP_ERROR && !hready) |=> (hresp == RESP_ERROR && hready); endproperty
     property p_hresp_okay_idle;  @(posedge hclk) disable iff (!hresetn) (hready && htrans == TR_IDLE && $past(htrans) == TR_IDLE) |=> (hresp == RESP_OKAY); endproperty
-    
+
     assert_hresp_err_2cycle: assert property (p_hresp_err_2cycle) else `uvm_error("AHB_SVA", "ERROR must last 2 cycles");
     cover_hresp_err_2cycle:  cover property (p_hresp_err_2cycle);
     assert_hresp_okay_idle:  assert property (p_hresp_okay_idle)  else `uvm_error("AHB_SVA", "ERROR illegal in IDLE");
@@ -112,7 +112,7 @@ interface fpt_ahb_sva #(
     // =========================================================================
     // 2. FUNCTIONAL COVERAGE (SCENARIO TRACKING ONLY)
     // =========================================================================
-    
+
     cover_htrans_idle:   cover property (@(posedge hclk) disable iff (!hresetn) hready && htrans == 2'b00);
     cover_htrans_busy:   cover property (@(posedge hclk) disable iff (!hresetn) hselx && hready && htrans == 2'b01);
     cover_htrans_nonseq: cover property (@(posedge hclk) disable iff (!hresetn) hselx && hready && htrans == 2'b10);
