@@ -14,12 +14,12 @@ module fpt_ahb_tb_top;
 
   initial begin
     hclk = 0;
-    forever #5 hclk = ~hclk; 
+    forever #5ns hclk = ~hclk; 
   end
 
   initial begin
     hresetn = 0;
-    #25;
+    #25ns;
     hresetn = 1; 
   end
 
