@@ -24,7 +24,6 @@ def main():
         return_code = run_test_main([
             "--test", test_name,
             "--seed", str(seed),
-            "--no-wave",
         ])
         if return_code != 0:
             failed_tests.append((test_name, seed))

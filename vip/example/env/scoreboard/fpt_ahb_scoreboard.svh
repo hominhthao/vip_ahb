@@ -34,17 +34,26 @@ class fpt_ahb_scoreboard extends uvm_scoreboard;
     extern function void report_mismatch(string message);
 endclass : fpt_ahb_scoreboard
 
+//---------------
+// Description: Implementation of new
+//---------------
 function fpt_ahb_scoreboard::new(string name = "fpt_ahb_scoreboard",
                                  uvm_component parent = null);
     super.new(name, parent);
 endfunction : new
 
+//---------------
+// Description: Implementation of build_phase
+//---------------
 function void fpt_ahb_scoreboard::build_phase(uvm_phase phase);
     super.build_phase(phase);
     master_fifo = new("master_fifo", this);
     slave_fifo = new("slave_fifo", this);
 endfunction : build_phase
 
+//---------------
+// Description: Implementation of run_phase
+//---------------
 task fpt_ahb_scoreboard::run_phase(uvm_phase phase);
     fpt_ahb_master_transaction master_tx;
     fpt_ahb_slave_transaction slave_tx;
@@ -59,6 +68,9 @@ task fpt_ahb_scoreboard::run_phase(uvm_phase phase);
     end
 endtask : run_phase
 
+//---------------
+// Description: Implementation of check_transfer
+//---------------
 function void fpt_ahb_scoreboard::check_transfer(
                                                  fpt_ahb_master_transaction master_tx,
                                                  fpt_ahb_slave_transaction slave_tx
@@ -189,11 +201,17 @@ function void fpt_ahb_scoreboard::check_transfer(
     end
 endfunction : check_transfer
 
+//---------------
+// Description: Implementation of report_mismatch
+//---------------
 function void fpt_ahb_scoreboard::report_mismatch(string message);
     mismatch_count++;
     `uvm_error("FPT_AHB_SCB", message)
 endfunction : report_mismatch
 
+//---------------
+// Description: Implementation of check_phase
+//---------------
 function void fpt_ahb_scoreboard::check_phase(uvm_phase phase);
     super.check_phase(phase);
     if (expected_count < 0)
@@ -209,6 +227,9 @@ function void fpt_ahb_scoreboard::check_phase(uvm_phase phase);
                              waiting_for_slave, master_fifo.used(), slave_fifo.used()))
 endfunction : check_phase
 
+//---------------
+// Description: Implementation of report_phase
+//---------------
 function void fpt_ahb_scoreboard::report_phase(uvm_phase phase);
     super.report_phase(phase);
     `uvm_info("FPT_AHB_SCB_SUMMARY",

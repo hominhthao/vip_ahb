@@ -22,4 +22,13 @@
     `define FPT_AHB_VIP_HMASTER_WIDTH 4
 `endif
 
-`endif
+`define FPT_AHB_TR_IDLE    2'b00
+`define FPT_AHB_TR_BUSY    2'b01
+`define FPT_AHB_TR_NONSEQ  2'b10
+`define FPT_AHB_TR_SEQ     2'b11
+  
+`define FPT_AHB_RESP_OKAY  1'b0
+`define FPT_AHB_RESP_ERROR 1'b1
+
+
+`endif // FPT_AHB_MACROS_SVH

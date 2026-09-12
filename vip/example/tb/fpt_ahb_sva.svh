@@ -27,12 +27,6 @@ interface fpt_ahb_sva #(
     import uvm_pkg::*;
 `include "uvm_macros.svh"
 
-    localparam TR_IDLE   = 2'b00;
-    localparam TR_BUSY   = 2'b01;
-    localparam TR_NONSEQ = 2'b10;
-    localparam TR_SEQ    = 2'b11;
-    localparam RESP_OKAY  = 1'b0;
-    localparam RESP_ERROR = 1'b1;
 
     // =========================================================================
     // 1. ASSERTION COVERAGE (SHARED PROPERTIES)
@@ -61,11 +55,11 @@ interface fpt_ahb_sva #(
     cover_haddr_not_x:   cover property (p_haddr_not_x);
 
     // --- Stability during wait ---
-    property p_haddr_stable;  @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {TR_NONSEQ, TR_SEQ})) |=> $stable(haddr);  endproperty
-    property p_htrans_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {TR_NONSEQ, TR_SEQ})) |=> $stable(htrans); endproperty
-    property p_hwrite_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {TR_NONSEQ, TR_SEQ})) |=> $stable(hwrite); endproperty
-    property p_hsize_stable;  @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {TR_NONSEQ, TR_SEQ})) |=> $stable(hsize);  endproperty
-    property p_hburst_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {TR_NONSEQ, TR_SEQ})) |=> $stable(hburst); endproperty
+    property p_haddr_stable;  @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(haddr);  endproperty
+    property p_htrans_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(htrans); endproperty
+    property p_hwrite_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(hwrite); endproperty
+    property p_hsize_stable;  @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(hsize);  endproperty
+    property p_hburst_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(hburst); endproperty
 
     assert_haddr_stable:  assert property (p_haddr_stable)  else `uvm_error("AHB_SVA", "haddr unstable during wait state");
     cover_haddr_stable:   cover property (p_haddr_stable);
@@ -79,17 +73,17 @@ interface fpt_ahb_sva #(
     cover_hburst_stable:  cover property (p_hburst_stable);
 
     // --- Write Data valid ---
-    sequence s_write_addr_phase; (hselx && hready && (htrans inside {TR_NONSEQ, TR_SEQ}) && hwrite); endsequence
+    sequence s_write_addr_phase; (hselx && hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) && hwrite); endsequence
     property p_hwdata_valid; @(posedge hclk) disable iff (!hresetn) s_write_addr_phase ##1 (hready [->1]) |-> !($isunknown(hwdata)); endproperty
 
     assert_hwdata_valid: assert property (p_hwdata_valid) else `uvm_error("AHB_SVA", "hwdata contains X during write");
     cover_hwdata_valid:  cover property (p_hwdata_valid);
 
     // --- FSM transitions ---
-    property p_trans_busy_seq;   @(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == TR_BUSY && htrans == TR_SEQ) |-> (haddr == $past(haddr)) && (hsize == $past(hsize)) && (hburst == $past(hburst)); endproperty
-    property p_trans_busy_nonseq;@(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == TR_BUSY && htrans == TR_NONSEQ) |-> (haddr & ((1 << hsize) - 1)) == 0; endproperty
-    property p_trans_idle_nonseq;@(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == TR_IDLE && htrans == TR_NONSEQ) |-> (haddr & ((1 << hsize) - 1)) == 0; endproperty
-    property p_trans_idle_seq;   @(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == TR_IDLE) |-> (htrans != TR_SEQ); endproperty
+    property p_trans_busy_seq;   @(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == `FPT_AHB_TR_BUSY && htrans == `FPT_AHB_TR_SEQ) |-> (haddr == $past(haddr)) && (hsize == $past(hsize)) && (hburst == $past(hburst)); endproperty
+    property p_trans_busy_nonseq;@(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == `FPT_AHB_TR_BUSY && htrans == `FPT_AHB_TR_NONSEQ) |-> (haddr & ((1 << hsize) - 1)) == 0; endproperty
+    property p_trans_idle_nonseq;@(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == `FPT_AHB_TR_IDLE && htrans == `FPT_AHB_TR_NONSEQ) |-> (haddr & ((1 << hsize) - 1)) == 0; endproperty
+    property p_trans_idle_seq;   @(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == `FPT_AHB_TR_IDLE) |-> (htrans != `FPT_AHB_TR_SEQ); endproperty
 
     assert_trans_busy_seq:   assert property (p_trans_busy_seq)   else `uvm_error("AHB_SVA", "BUSY to SEQ violated stability");
     cover_trans_busy_seq:    cover property (p_trans_busy_seq);
@@ -101,8 +95,8 @@ interface fpt_ahb_sva #(
     cover_trans_idle_seq:    cover property (p_trans_idle_seq);
 
     // --- Responses ---
-    property p_hresp_err_2cycle; @(posedge hclk) disable iff (!hresetn) (hresp == RESP_ERROR && !hready) |=> (hresp == RESP_ERROR && hready); endproperty
-    property p_hresp_okay_idle;  @(posedge hclk) disable iff (!hresetn) (hready && htrans == TR_IDLE && $past(htrans) == TR_IDLE) |=> (hresp == RESP_OKAY); endproperty
+    property p_hresp_err_2cycle; @(posedge hclk) disable iff (!hresetn) (hresp == `FPT_AHB_RESP_ERROR && !hready) |=> (hresp == `FPT_AHB_RESP_ERROR && hready); endproperty
+    property p_hresp_okay_idle;  @(posedge hclk) disable iff (!hresetn) (hready && htrans == `FPT_AHB_TR_IDLE && $past(htrans) == `FPT_AHB_TR_IDLE) |=> (hresp == `FPT_AHB_RESP_OKAY); endproperty
 
     assert_hresp_err_2cycle: assert property (p_hresp_err_2cycle) else `uvm_error("AHB_SVA", "ERROR must last 2 cycles");
     cover_hresp_err_2cycle:  cover property (p_hresp_err_2cycle);
