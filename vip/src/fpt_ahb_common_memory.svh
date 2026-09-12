@@ -18,20 +18,32 @@ class fpt_ahb_common_memory extends uvm_object;
     extern function void clear();
 endclass
 
+//---------------
+// Description: Implementation of new
+//---------------
 function fpt_ahb_common_memory::new(string name = "fpt_ahb_common_memory");
     super.new(name);
 endfunction
 
+//---------------
+// Description: Implementation of write
+//---------------
 function void fpt_ahb_common_memory::write(input addr_t addr, input data_t data);
     storage[addr] = data;
 endfunction
 
+//---------------
+// Description: Implementation of read
+//---------------
 function fpt_ahb_common_memory::data_t fpt_ahb_common_memory::read(input addr_t addr);
     if (storage.exists(addr))
         return storage[addr];
     return '0;
 endfunction
 
+//---------------
+// Description: Implementation of clear
+//---------------
 function void fpt_ahb_common_memory::clear();
     storage.delete();
 endfunction
