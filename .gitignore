@@ -13,3 +13,4 @@ simv.daidir/
 csrc/
 .DVEfiles/
 verdiLog/
+scripts/__pycache__/

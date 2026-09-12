@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Compatibility wrapper for the random READ/WRITE integration test."""
 
-from run_raw import main
+import sys
+
+from run_test import main
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(["--test", "fpt_ahb_random_rw_test"]))
+    args = sys.argv[1:]
+    if "--test" not in args:
+        args = ["--test", "fpt_ahb_random_rw_test"] + args
+    raise SystemExit(main(args))

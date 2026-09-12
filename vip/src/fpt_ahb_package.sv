@@ -40,5 +40,6 @@ package fpt_ahb_package;
     `include "sequence_lib/fpt_ahb_master_base_seq.svh"
     `include "sequence_lib/fpt_ahb_slave_base_seq.svh"
     `include "sequence_lib/fpt_ahb_slave_mem_seq.svh"
+    `include "sequence_lib/fpt_ahb_slave_wait_mem_seq.svh"
 
 endpackage : fpt_ahb_package
