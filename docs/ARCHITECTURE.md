@@ -13,6 +13,26 @@ architecture must not assume one particular DUT or memory behavior.
 v0.0 is the frozen implementation baseline. v0.1 evolves its responsibility
 boundaries before adding Full Burst + WAIT.
 
+## Architecture Diagrams
+
+The diagrams are visual summaries. The responsibility and ownership contracts
+in this document remain authoritative if a diagram becomes stale.
+
+### Frozen v0.0
+
+![FPT AHB VIP v0.0 architecture](./VIP_AHB_Architecture_v0.0.drawio.png)
+
+The v0.0 diagram shows the implemented UVM testbench: AHB Test, Environment,
+Master/Slave Agents, Scoreboard, Coverage, Assertion, AHB Interface, and DUT.
+
+### Approved v0.1 Direction
+
+![FPT AHB VIP v0.1 architecture](./VIP_AHB_Architecture_v0.1.png)
+
+The v0.1 diagram shows the reusable `1M / 1S` verified configuration with Env
+Config, separate System Monitor and System Checker, optional Predictor /
+Reference Model, Coverage, Assertions, Common Memory, AHB Interface, and DUT.
+
 ## System Structure
 
 The reusable direction is:
