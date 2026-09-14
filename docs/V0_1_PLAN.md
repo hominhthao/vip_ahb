@@ -1,280 +1,141 @@
 # FPT AHB VIP v0.1 Plan
 
-## 1. Version Goal
+## Goal
 
-**Theme:** Full Burst + WAIT Support + System-ready Architecture
+**Reusable VIP Foundation First, Then Full Burst + WAIT**
 
-v0.1 enhances the frozen v0.0 baseline instead of rebuilding the VIP.
+v0.1 improves the frozen v0.0 foundation before extending protocol behavior.
+The result must remain configurable and reusable by third-party users rather
+than being architecturally tied to one DUT or memory use-case.
 
-Primary goals:
+The verified v0.1 configuration is one Master and one Slave. This is not a
+permanent architectural limitation. Component responsibilities and data flow
+are defined in `docs/ARCHITECTURE.md`.
 
-- Add full `HBURST` support.
-- Add real `WAIT` / `HREADYOUT` behavior.
-- Preserve the current class-based UVM architecture.
-- Keep the verified topology at **1 Master / 1 Slave** for v0.1.
-- Prepare Environment / Checker structures for future multi-agent expansion.
-- Preserve all v0.0 behavior and regression results.
+## In Scope
 
-## 2. Frozen v0.1 Scope
+- reusable Environment and configuration foundation;
+- separate Agent Monitor, System Monitor, and System Checker responsibilities;
+- optional memory Predictor / Reference Model;
+- READ and WRITE;
+- WORD transfers only;
+- OKAY-focused stimulus and signoff;
+- SINGLE, INCR, INCR4/8/16, and WRAP4/8/16;
+- IDLE, BUSY, NONSEQ, and SEQ;
+- configurable ZERO, FIXED, and RANDOM WAIT;
+- basic reset-during-burst recovery;
+- burst-aware observation and checking;
+- SVA and functional coverage;
+- directed tests and constrained-random regression;
+- frozen v0.0 regression compatibility.
 
-### In Scope
+Existing ERROR-related code is retained for backward compatibility, but ERROR
+enhancement is not part of v0.1.
 
-- READ / WRITE
-- WORD transfers only
-- OKAY response only
-- 1 Master / 1 Slave verified topology
-- Full `HBURST`: SINGLE, INCR, INCR4/8/16, WRAP4/8/16
-- `HTRANS`: IDLE, BUSY, NONSEQ, SEQ
-- WAIT / `HREADY` / `HREADYOUT`
-- Configurable Slave performance / wait policy
-- Burst-aware Monitor / Checker
-- Functional coverage
-- Directed burst tests
-- Random stress and regression
-- System-ready Env / Config / Checker foundation
+## Deferred
 
-### Deferred
+- full functional multi-Master or multi-Slave operation;
+- routing, arbitration, or interconnect implementation;
+- BYTE or HALFWORD transfers;
+- ERROR enhancement;
+- advanced `HPROT`, `HMASTLOCK`, and other sideband behavior;
+- advanced/random reset stress;
+- unnecessary Proxy, Converter, transport Struct, or HDL BFM layers;
+- a virtual sequencer without a concrete approved need.
 
-- ERROR response
-- BYTE / HALFWORD support
-- Full functional multi-Master / multi-Slave verification
-- Interconnect / arbitration
-- Full routing implementation
-- Advanced sideband behavior
-- Advanced protection / lock features
+## Phase 1 — Reusable VIP Foundation
 
-## 3. Architecture Principles
+1. Synchronize and freeze v0.1 architecture documentation.
+2. Add Environment-level configuration for Agent configuration, topology,
+   WAIT/performance policy, and optional checking/prediction policy.
+3. Define the System Monitor foundation for future source, destination, and
+   system-level context; do not rename the Scoreboard to System Monitor.
+4. Evolve the current Scoreboard toward a generic System Checker for
+   Master/Slave matching and transaction/data integrity.
+5. Separate memory prediction into an optional Predictor / Reference Model.
+   Keep it independent of Slave common memory.
+6. Remove `HSEL` ownership from the Master protocol Driver. Use a simple
+   TB/top-level selection policy for the verified point-to-point configuration.
+7. Verify and correct WAIT timing with SINGLE traffic before burst integration.
+8. Provide ZERO_WAIT, FIXED_WAIT, and RANDOM_WAIT configuration with fixed,
+   minimum, and maximum cycle controls.
+9. Review transaction randomization so configurable stimulus fields may remain
+   `rand` while constraints, sequences, and Drivers enforce legal behavior.
+10. Run the complete maintained v0.0 regression after foundation changes.
 
-- Keep dynamic protocol behavior in UVM classes.
-- Do not add Proxy / Converter / HDL BFM layers.
-- Keep static SystemVerilog only where appropriate: interface, tb_top, SVA/assertions.
-- v0.1 is an enhancement of v0.0 components, not a new architecture.
-- Multi-agent readiness does not mean full multi-agent functionality in v0.1.
-- The v0.0 regression must remain valid throughout development.
+## Phase 2 — Full Burst + WAIT
 
-## 4. Component Enhancement Plan
+1. Freeze the burst transaction contract:
+   - one Master sequence item is one burst request;
+   - one Monitor observation is one completed active beat;
+   - one System Checker check/count unit is one completed active beat;
+   - Slave response behavior remains per beat;
+   - `expected_count` and `checked_count` remain completed-beat counts.
+2. Add all `HBURST` definitions.
+3. Add burst metadata and finite `num_beats` policy. Undefined INCR uses a
+   planned default constrained range of 2 through 16 beats, configurable by
+   sequence or test.
+4. Add reusable generation-side burst address calculation.
+5. Enforce WORD alignment, four-byte increments, WRAP boundaries, and the AHB
+   1 KB boundary. Keep Checker progression independently verifiable.
+6. Extend Master Sequence and Driver for burst-level requests.
+7. Enforce legal runtime `HTRANS` progression:
+   - first active beat is NONSEQ;
+   - later active beats are SEQ;
+   - BUSY is optional and does not consume a beat;
+   - idle bus uses IDLE.
+8. Extend Slave behavior per active beat without premature memory updates.
+9. Extend Agent Monitors to reconstruct completed beats and actual WAIT from bus
+   signals, independently of Driver/Sequence intent.
+10. Extend System Checker burst state and progression checking.
+11. Bring up protocol flows incrementally:
+    - INCR4 WRITE, zero wait;
+    - INCR4 READ, zero wait;
+    - INCR4 with WAIT;
+    - remaining fixed INCR bursts;
+    - WRAP bursts;
+    - undefined-length INCR;
+    - BUSY insertion and resume.
+12. Verify WAIT on first, middle, and final burst beats. Low `HREADY` must not
+    advance beat or address state.
+13. Implement basic reset recovery: abort incomplete state, clear pending
+    Driver/Monitor state, avoid incomplete check/commit, and return to IDLE.
 
-### 4.1 Architecture / System Environment
+## Phase 3 — Verification Quality
 
-- Define System Env responsibility.
-- Add `fpt_ahb_env_cfg`.
-- Prepare `num_master`, `num_slave`, Master/Slave cfg arrays, and wait/performance policy.
-- Keep v0.1 verified topology at `1M / 1S`.
-- Define future System Checker and System Monitor responsibilities.
-- Prepare source/destination metadata concept for future routing.
-- Do not implement full multi-agent routing in v0.1.
+1. Extend SVA for WAIT stability, burst legality, accepted transfers, legal
+   NONSEQ/SEQ progression, BUSY, and basic reset recovery.
+2. Add functional coverage for:
+   - `HBURST` and `HTRANS`;
+   - READ and WRITE;
+   - WAIT and no-WAIT;
+   - burst by direction;
+   - burst by wait mode;
+   - relevant beat positions and transitions.
+3. Add directed tests for every supported burst, READ/WRITE, WAIT positions,
+   BUSY, back-to-back traffic, boundary rules, and reset recovery.
+4. Run legal constrained-random 100- and 1000-transaction stress.
+5. Add automatic/random-seed regression and failing-seed reproduction.
+6. Run the complete frozen v0.0 regression.
+7. Review representative waveforms and record known limitations.
 
-### 4.2 Interface / SVA
-
-- Clean up `HSEL` ownership.
-- Ensure Master protocol flow does not own Slave selection policy.
-- Verify `HREADY` / `HREADYOUT` connections support real wait states.
-- Preserve current clocking/interface structure where possible.
-- Extend assertions for wait-state stability, burst legality, NONSEQ->SEQ progression, BUSY behavior, and accepted-transfer conditions.
-
-### 4.3 Transaction / Sequence
-
-- Enable full `HBURST` values.
-- Enable complete `HTRANS` usage.
-- Add burst metadata for burst type, beat index, burst length, start address, current address.
-- Define finite sequence policy for undefined-length `INCR`.
-- Add reusable burst address generation.
-- Support legal constrained-random burst generation.
-
-Initial protocol rules:
-
-- First active beat: `NONSEQ`
-- Following active beats: `SEQ`
-- `BUSY` does not consume a burst data beat.
-- `HREADY == 0` does not advance beat/address state.
-- WORD transfer step = 4 bytes.
-
-### 4.4 Master Driver / Monitor
-
-Master Driver:
-
-- Support multi-beat burst execution.
-- Generate correct `NONSEQ` / `SEQ`.
-- Support `BUSY`.
-- Advance burst state only after accepted transfer.
-- Hold required protocol information during wait states.
-- Preserve v0.0 SINGLE behavior.
-
-Master Monitor:
-
-- Reconstruct actual completed burst beats from bus signals.
-- Remain independent from Driver intent.
-- Handle pipelined address/data behavior across wait states.
-- Publish enough burst metadata for checking.
-
-### 4.5 Slave Driver / Monitor
-
-Slave Driver:
-
-- Support configurable / random `HREADYOUT`.
-- HIGH performance -> zero wait.
-- Configured/random mode -> bounded wait.
-- Process every accepted burst beat.
-- Preserve Env-owned common-memory semantics.
-- READ common memory for successful reads.
-- WRITE common memory only after valid completed writes.
-
-Slave Monitor:
-
-- Reconstruct actual Slave-side burst behavior.
-- Measure actual observed wait cycles.
-- Publish accepted/completed beat information independently.
-
-### 4.6 Checker / Coverage
-
-- Preserve independent reference memory.
-- Check Master vs Slave observations.
-- Check burst type, beat count, address progression, direction, data integrity, and response.
-- Add pending queues where required for pipelined/waited traffic.
-- Prepare future source/destination metadata for multi-agent routing.
-- Do not depend on the Slave common memory for expected data.
-
-Functional coverage:
-
-- `HBURST`
-- `HTRANS`
-- READ / WRITE
-- WAIT / no-WAIT
-- Burst x direction
-- Burst x wait
-- Relevant beat / transition coverage
-
-### 4.7 TB / Test / Regression
-
-Directed tests:
-
-- SINGLE compatibility
-- INCR
-- INCR4
-- INCR8
-- INCR16
-- WRAP4
-- WRAP8
-- WRAP16
-- READ burst
-- WRITE burst
-- WAIT on first/middle/final beat
-- BUSY insertion and resume
-- back-to-back transfers / bursts
-
-Random testing:
-
-- legal constrained-random traffic
-- 100 transactions
-- 1000 transactions
-- multiple / automatic seeds
-- preserve failing seed for reproduction
-
-Regression requirements:
-
-- all maintained v0.0 tests remain PASS
-- no new UVM_ERROR / UVM_FATAL
-- no checker mismatch
-- SVA clean
-- waveform evidence for representative burst/wait scenarios
-
-## 5. Suggested Development Order
-
-1. Freeze architecture and v0.1 scope.
-2. Audit v0.0 assumptions related to SINGLE / NONSEQ / wait / 1M1S.
-3. Clean up HSEL ownership.
-4. Add Env configuration foundation.
-5. Define burst transaction model.
-6. Implement and verify burst address helper.
-7. Extend Master Sequence.
-8. Bring up Master burst flow incrementally:
-   - INCR4 WRITE, zero wait
-   - INCR4 READ, zero wait
-   - INCR4 + WAIT
-   - remaining INCR bursts
-   - WRAP bursts
-   - INCR
-   - BUSY
-9. Extend Slave Driver / Monitor.
-10. Extend Master Monitor.
-11. Extend System Checker.
-12. Add SVA and functional coverage.
-13. Add directed tests.
-14. Add random stress / regression.
-15. Run full v0.0 compatibility regression.
-16. Sign off v0.1.
-
-## 6. Team Split
-
-### Master / Burst Track
-
-- HSEL cleanup
-- Burst transaction model
-- Burst address generation
-- Master Sequence
-- Master Driver
-- Master Monitor
-- SVA
-- Functional coverage
-- Random stress / regression
-
-### Slave / System Track
-
-- System Env / Config
-- System Checker foundation
-- System Monitor foundation
-- Slave WAIT / performance behavior
-- Slave burst processing
-- Slave Monitor
-- Reference/data-integrity checking
-- v0.0 compatibility regression
-
-Integration points are reviewed jointly.
-
-## 7. v0.1 Exit Criteria
+## Exit Criteria
 
 v0.1 is complete only when:
 
-- All supported HBURST types have directed evidence.
-- READ and WRITE burst paths pass.
-- WAIT works at multiple positions within a burst.
-- BUSY behavior is verified.
-- Monitors reconstruct actual completed traffic correctly.
-- Checker expected count equals checked count.
-- Checker mismatches = 0.
-- No unexpected `UVM_ERROR`.
-- No `UVM_FATAL`.
-- Required SVA checks pass.
-- Functional coverage evidence is collected.
-- Random stress runs complete with reproducible seeds.
-- Frozen v0.0 regression remains PASS.
-- Representative waveforms are reviewed.
-- Known limitations are documented.
-
-## 8. First Codex Audit Task
-
-Before implementation, run an **audit-only** task.
-
-Codex should identify every v0.0 assumption related to:
-
-- `HBURST == SINGLE`
-- `HTRANS == NONSEQ`
-- 1 Master / 1 Slave assumptions
-- always-ready or bounded hard-coded wait behavior
-- HSEL ownership
-- one-transfer-per-transaction assumptions
-- Monitor pairing assumptions
-- Scoreboard FIFO pairing assumptions
-- burst-unaware address/data tracking
-- tests or scripts that assume SINGLE-only behavior
-
-The audit must report:
-
-- affected file
-- affected class/function/task
-- current assumption
-- why it blocks v0.1
-- suggested change
-- dependency / risk
-
-**Do not modify any source file during the audit.**
+- reusable responsibility boundaries are implemented and documented;
+- verified topology remains `1M / 1S` without becoming a permanent hardcode;
+- System Monitor and System Checker remain separate responsibilities;
+- generic checking does not require a memory-like target;
+- HSEL is no longer owned by the Master Driver;
+- SINGLE WAIT timing passes before burst WAIT signoff;
+- all supported HBURST types have directed READ/WRITE evidence;
+- WAIT works at multiple beat positions without advancing state;
+- BUSY and basic reset recovery are verified;
+- Monitors reconstruct completed beats and actual WAIT correctly;
+- Checker expected and checked beat counts match with zero mismatches;
+- required SVA and functional coverage evidence is collected;
+- 100/1000 random stress is reproducible by seed;
+- no unexpected `UVM_ERROR` or `UVM_FATAL` occurs;
+- the frozen v0.0 regression remains PASS;
+- representative waveforms and known limitations are reviewed.

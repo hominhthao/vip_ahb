@@ -16,6 +16,7 @@ Before implementation, read:
 
 - `docs/PROJECT_CONTEXT.md`
 - `docs/ARCHITECTURE.md`
+- `docs/V0_1_PLAN.md` when the active task targets v0.1
 - `docs/CODING_RULES.md`
 - `docs/REPO_CURRENT_STATE.md`
 
