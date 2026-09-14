@@ -120,8 +120,11 @@ The current v0.0 Scoreboard evolves toward a generic System Checker. It performs
 
 The Checker must not require every target to behave like normal memory. For the
 verified v0.1 one-Master/one-Slave in-order configuration, one check unit is one
-completed active beat. `expected_count` and `checked_count` remain completed-
-beat counts.
+completed active beat. `expected_count` and `checked_count` remain counts of
+completed active beats.
+
+Random-stress transaction totals count Master burst-level sequence requests;
+they do not change the Checker's completed-active-beat count semantics.
 
 ## Optional Predictor / Reference Model
 

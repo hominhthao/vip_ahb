@@ -114,7 +114,9 @@ enhancement is not part of v0.1.
    - relevant beat positions and transitions.
 3. Add directed tests for every supported burst, READ/WRITE, WAIT positions,
    BUSY, back-to-back traffic, boundary rules, and reset recovery.
-4. Run legal constrained-random 100- and 1000-transaction stress.
+4. Run legal constrained-random stress with 100 and 1000 Master burst-level
+   sequence requests. Checker expected/checked totals remain counts of completed
+   active beats.
 5. Add automatic/random-seed regression and failing-seed reproduction.
 6. Run the complete frozen v0.0 regression.
 7. Review representative waveforms and record known limitations.
@@ -135,7 +137,8 @@ v0.1 is complete only when:
 - Monitors reconstruct completed beats and actual WAIT correctly;
 - Checker expected and checked beat counts match with zero mismatches;
 - required SVA and functional coverage evidence is collected;
-- 100/1000 random stress is reproducible by seed;
+- random stress with 100/1000 Master burst-level sequence requests is
+  reproducible by seed;
 - no unexpected `UVM_ERROR` or `UVM_FATAL` occurs;
 - the frozen v0.0 regression remains PASS;
 - representative waveforms and known limitations are reviewed.

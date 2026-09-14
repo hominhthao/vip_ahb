@@ -45,7 +45,8 @@ v0.1 will functionally verify:
 - basic reset-during-burst recovery;
 - functional coverage;
 - directed burst and WAIT tests;
-- 100/1000-transaction random stress and seed-based regression.
+- random stress with 100/1000 Master burst-level sequence requests and
+  seed-based regression.
 
 One Master and one Slave is the verified v0.1 configuration, not a permanent
 architectural limit.
