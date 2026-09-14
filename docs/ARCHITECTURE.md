@@ -1,220 +1,232 @@
-# ARCHITECTURE.md
+# FPT AHB VIP Architecture
 
-## 1. AHB VIP v0.0 Architecture
+## Principles
 
-Current target:
+The VIP uses a direct UVM class-based architecture. Dynamic protocol behavior
+belongs in UVM classes; static SystemVerilog is used for the interface,
+testbench wiring, and SVA.
 
-- AHB-Lite
-- UVM / SystemVerilog
-- minimal point-to-point architecture
+Do not introduce unnecessary Proxy, Converter, intermediate transport Struct,
+or separate HDL BFM layers. Configuration and defaults support reuse, but the
+architecture must not assume one particular DUT or memory behavior.
 
-Main flow:
+v0.0 is the frozen implementation baseline. v0.1 evolves its responsibility
+boundaries before adding Full Burst + WAIT.
 
-```text
-Sequence
-    ->
-Sequencer
-    ->
-Driver
-    ->
-Virtual Interface
-    ->
-DUT
-```
+## Architecture Diagrams
 
-Monitor flow:
+The diagrams are visual summaries. The responsibility and ownership contracts
+in this document remain authoritative if a diagram becomes stale.
 
-```text
-AHB Signals
-    ->
-Monitor
-    ->
-Transaction
-    ->
-Scoreboard / Functional Coverage
-```
+### Frozen v0.0
 
-Main components:
+![FPT AHB VIP v0.0 architecture](./VIP_AHB_Architecture_v0.0.drawio.png)
 
-```text
-AHB Environment
-    |
-    +-- Master Agent
-    |     +-- Sequencer
-    |     +-- Driver
-    |     +-- Monitor
-    |     +-- Config
-    |
-    +-- Slave Agent
-    |     +-- Sequencer
-    |     +-- Driver
-    |     +-- Monitor
-    |     +-- Config
-    |
-    +-- Scoreboard
-    +-- Functional Coverage
+The v0.0 diagram shows the implemented UVM testbench: AHB Test, Environment,
+Master/Slave Agents, Scoreboard, Coverage, Assertion, AHB Interface, and DUT.
 
-AHB Interface
-    |
-    +-- Master clocking block
-    +-- Slave clocking block
-    +-- Monitor clocking block
-    +-- Protocol Assertions
+### Approved v0.1 Direction
 
-DUT
-```
+![FPT AHB VIP v0.1 architecture](./VIP_AHB_Architecture_v0.1.png)
 
-## 2. Key Architecture Decisions for v0.0
+The v0.1 diagram shows the reusable `1M / 1S` verified configuration with Env
+Config, separate System Monitor and System Checker, optional Predictor /
+Reference Model, Coverage, Assertions, Common Memory, AHB Interface, and DUT.
 
-The new VIP uses a direct UVM class-based flow.
+## System Structure
 
-The following legacy layers are intentionally not used in v0.0:
+The reusable direction is:
 
 ```text
-Proxy
-Converter
-Intermediate Struct
-Separate simulation BFM layer
+System Env
+├── Env Config
+├── Master Agent(s)
+│   ├── Agent Config
+│   ├── Sequencer
+│   ├── Driver
+│   └── Agent Monitor
+├── Slave Agent(s)
+│   ├── Agent Config
+│   ├── Sequencer
+│   ├── Driver
+│   └── Agent Monitor
+├── System Monitor
+├── System Checker
+└── optional Predictor / Reference Model
 ```
 
-Transaction and Interface are separate abstractions.
+v0.1 functionally verifies one Master and one Slave. That is a verified
+configuration, not a permanent architectural hardcode. Full routing,
+arbitration, interconnect behavior, and functional multi-agent verification are
+deferred.
 
-```text
-Transaction
-    ->
-Driver
-    ->
-Interface
-```
+## Environment and Configuration
 
-### Transaction / Driver Responsibilities
+The System Environment constructs and connects the configured components. Env
+Config owns environment-level policy rather than scattering hardcoded behavior
+through Agents, tests, or the example DUT.
 
-Master and Slave transactions are separate, as required by lead clarification
-superseding the shared-transaction decision in local commit `68244ce`.
-Each describes one AHB-Lite SINGLE transfer. Master generates request fields and
-stores observed results. Slave holds non-random captured request context and
-randomizable read data, response, and wait count. The future Slave default sequence
-will use the Slave Transaction; its implementation is deferred.
-Drivers control how transfers and responses are driven cycle-by-cycle.
-Approved fields and transfer limits are defined in `docs/PROJECT_CONTEXT.md`.
+Env Config provides or coordinates:
 
-HTRANS is not a transaction field in v0.0. The Driver generates the required
-transfer phase, such as NONSEQ when executing a transaction, and controls IDLE
-behavior when no transaction is active.
+- Master and Slave Agent configurations;
+- configured topology;
+- WAIT/performance policy;
+- Checker enable/configuration;
+- optional Predictor / Reference Model policy.
 
-HTRANS sequencing, IDLE behavior, wait-state cycle handling, reset handling,
-and timeout handling belong to Driver/interface behavior. Slave `wait_cycles`
-describes a requested count; the transaction itself does not wait or drive signals.
-Later burst support may extend Driver behavior to generate SEQ phases.
+The implementation may prepare Agent configuration collections for future
+reuse, but v0.1 creates and verifies only one Master and one Slave. No routing
+table, arbiter, interconnect, or virtual sequencer is added without a concrete
+approved need.
 
-The Monitor reconstructs observed bus activity back into transaction form.
+## Agent Responsibilities
 
-### Shared Memory Ownership
+### Master Agent
 
-The Environment will create one `fpt_ahb_common_memory` object and distribute
-the same handle through the Slave Agent to the Slave Driver.
+The Master Sequence supplies legal stimulus intent. The Master Driver converts
+that intent into cycle-accurate AHB behavior and obtains READ data from `HRDATA`.
+It must not access Slave common memory.
 
-```text
-Environment
-    +-- common_memory (one runtime object)
-    +-- Slave Agent
-            +-- Slave Driver -> same common_memory handle
-```
+For v0.1, one Master sequence item represents one burst request. Configurable
+stimulus fields may be declared `rand`; constraints and sequences select the
+scenario, while Driver behavior enforces legal runtime progression.
 
-The Slave Driver will commit successful completed WRITEs to common memory. For
-READs, it will snapshot common-memory data and drive that value on HRDATA. ERROR
-or reset-aborted WRITEs must not update memory. Response generation and
-`wait_cycles` remain Slave Transaction/Driver responsibilities.
+### Slave Agent
 
-The Master Driver does not receive the common-memory handle. It obtains
-`master_transaction.read_data` only by sampling HRDATA on the AHB interface.
-Runtime Environment/Agent `config_db` wiring is deferred until those components
-are integrated.
+The Slave Driver observes accepted request context and applies response policy
+per active beat. WAIT policy, response timing, and common-memory access belong
+to the Slave side, not to the transaction object or common-memory object.
 
-### Scoreboard and Reference Model
+A successful completed WRITE may update Slave common memory. A READ may obtain
+response data from that memory. An incomplete or reset-aborted transfer must not
+be committed.
 
-The v0.0 Scoreboard checks two independent completed bus observations in order:
+### Agent Monitors
 
-```text
-Master Monitor -> master_fifo --+
-                                +-> Scoreboard -> private reference memory
-Slave Monitor  -> slave_fifo  --+
-```
+Master and Slave Agent Monitors reconstruct actual interface behavior
+independently of Driver and Sequence intent. Each publishes one observation per
+completed active beat.
 
-The Scoreboard reference memory is a separate associative array. It does not
-read or share the Slave common-memory object, so a Slave storage error cannot
-also become the expected result. It compares request context from both Monitors,
-including WRITE data, then applies response-aware reference-model rules.
+They are responsible for:
 
-One Master, one Slave, SINGLE transfers, and in-order completion allow FIFO-order
-pairing in v0.0. The Slave input must be reconstructed from interface signals by
-the Slave Monitor, not copied from a Driver response-plan object. Environment
-connections to both analysis FIFOs remain an integration task.
+- address/data pipeline tracking;
+- actual response and data observation;
+- actual WAIT-cycle measurement;
+- burst metadata reconstruction needed by checking;
+- clearing pending incomplete state on reset.
 
-The v0.0 implementation declares direction, size, burst, and response
-enums directly in `vip/src/fpt_ahb_package.sv`, before including both
-`fpt_ahb_master_transaction.svh` and `fpt_ahb_slave_transaction.svh`.
-Overrideable address/data width defaults are in `vip/include/fpt_ahb_macros.svh`.
-There is no separate protocol types file or common transaction base layer.
-The old generic class is replaced, without a compatibility alias.
+BUSY and IDLE are protocol observations but not completed data beats.
 
-Master Transaction `compare()` checks request fields only; result fields are ignored.
-`print()` displays all stored fields without implying transfer completion.
-Standalone transaction smoke verification does not require FU2 or an interface.
-Slave compare always checks address, direction, size, burst, response, and wait
-count. It compares write data for two WRITEs and read data for two READs with
-OKAY responses. Slave `print()`/`sprint()` display all eight stored fields:
-hex address/data, valid enum names (binary fallback for unnamed values), and
-decimal wait_cycles. Printing does not modify state or imply a completed transfer.
-Both transaction classes implement extern `do_copy()`: validate/cast the source,
-call `super.do_copy(rhs)`, then copy every custom field unconditionally. Master
-copies seven fields; Slave also copies wait_cycles. Inherited UVM `clone()` uses
-this copy behavior to populate a distinct object. Copy semantics do not follow
-the conditional field filtering used by compare and do not randomize or repair state.
-Slave response controls default softly to zero waits and OKAY; inline constraints
-may override either. No hard maximum or MAX_WAIT is defined. Maximum/timeout
-policy belongs to the later Slave configuration/Driver design.
-The future default sequence/Driver must define context delivery, response policy,
-wait limits, reset/timeout handling, and sequence startup phase before integration.
+## System Monitor
 
-## 3. v0.0 Boundary
+System Monitor is separate from Agent Monitors and System Checker. Its system-
+level observation boundary may add source, destination, routing-related
+metadata, and transaction-level system context.
 
-v0.0 focuses on the minimum architecture required to bring up the VIP.
+Full routing behavior is deferred. The current Scoreboard must not simply be
+renamed to System Monitor because observation and checking have different
+responsibilities.
 
-Current focus:
+## System Checker
 
-```text
-Transaction
-Interface
-Master Agent
-Slave Agent
-Driver
-Monitor
-Environment
-Basic Scoreboard/Coverage/SVA integration
-Shared common memory
-```
+The current v0.0 Scoreboard evolves toward a generic System Checker. It performs:
 
-The v0.0 common memory is deliberately limited to sparse word-data storage keyed
-by the full byte address, with `write()`, `read()`, and `clear()`. It has no clock,
-reset, protocol, byte-enable, region, protection, ECC, or timing behavior.
+- Master/Slave observation matching;
+- transaction integrity checking;
+- generic data-integrity checking;
+- burst type, beat count, and address progression checking;
+- pending queue/matching behavior where required;
+- a future boundary for routing-aware checking.
 
-## 4. After v0.0
+The Checker must not require every target to behave like normal memory. For the
+verified v0.1 one-Master/one-Slave in-order configuration, one check unit is one
+completed active beat. `expected_count` and `checked_count` remain counts of
+completed active beats.
 
-After the v0.0 foundation is stable, the architecture may be enhanced incrementally.
+Random-stress transaction totals count Master burst-level sequence requests;
+they do not change the Checker's completed-active-beat count semantics.
 
-Expected future direction may include:
+## Optional Predictor / Reference Model
 
-```text
-Broader AHB-Lite feature support
-More complete burst support
-Stronger protocol assertions
-Expanded functional coverage
-More configurable agents
-Richer memory policies and features
-Improved integration/debug infrastructure
-```
+Prediction is separate from generic checking. A Predictor / Reference Model may
+provide expected READ data for a memory-like target, but it is optional and does
+not define the System Checker architecture.
 
-Future features must be added through approved project decisions and tickets.
+The independent reference-memory behavior used by v0.0 is preserved for
+compatible tests while being separated from mandatory generic checking. Any
+Predictor/reference state remains independent of Slave common memory.
 
-Do not redesign the v0.0 architecture preemptively for future features.
+## Common Memory
+
+The Environment owns the Slave common-memory runtime object and shares its handle
+only with Slave consumers. Consumers must not create private fallback instances.
+
+Common memory provides storage only. It owns no clock, protocol timing, WAIT,
+response, selection, or reset policy. The Slave common memory and optional
+Predictor / Reference Model are separate objects with separate responsibilities.
+
+## HTRANS and Burst Granularity
+
+The v0.1 data contract is:
+
+- Master sequence item: one burst request;
+- Slave response policy: one active beat;
+- Agent Monitor observation: one completed active beat;
+- System Checker check/count unit: one completed active beat.
+
+`HTRANS` may exist as useful transaction metadata or randomizable capability,
+but runtime behavior must remain legal:
+
+- first active beat is NONSEQ;
+- subsequent active beats are SEQ;
+- optional BUSY follows legal burst policy;
+- an idle bus uses IDLE;
+- BUSY and IDLE do not consume completed beats;
+- low `HREADY` does not advance beat or address state.
+
+Undefined-length INCR uses a finite `num_beats` policy, with a planned default
+constraint of 2 through 16 beats. WORD-only burst progression must enforce
+alignment, wrapping rules, and the AHB 1 KB boundary.
+
+A shared generation helper may calculate burst addresses. Checker expected
+progression must remain independently verifiable to avoid a common-mode false
+PASS.
+
+## HSEL Ownership
+
+`HSEL` belongs to selection, decoder, or interconnect policy. The Master protocol
+Driver does not own or drive it.
+
+For the verified point-to-point v0.1 configuration, TB/top-level logic supplies
+a simple selection policy and may tie the single Slave selected. The selected
+Slave's `HREADYOUT` may feed bus `HREADY`; this is not a general multi-Slave
+readiness solution.
+
+## WAIT Ownership and Timing
+
+WAIT is selected per active beat by Slave response policy. Supported modes are
+ZERO_WAIT, FIXED_WAIT, and RANDOM_WAIT, with configurable fixed, minimum, and
+maximum wait cycles.
+
+While `HREADY` / `HREADYOUT` is low:
+
+- address/control and pending transfer state follow AHB stability rules;
+- beat and address state do not advance;
+- no transfer is reported complete;
+- no memory update occurs prematurely.
+
+Agent Monitors measure WAIT from bus signals rather than copying Sequence intent.
+WAIT timing must first be corrected and verified with SINGLE traffic before
+burst integration.
+
+## Reset and Compatibility
+
+Basic reset during a burst aborts incomplete state, clears Driver/Monitor pending
+state, prevents incomplete checking or memory commit, preserves already completed
+transfers, and returns the bus to legal idle behavior.
+
+Existing v0.0 ERROR enums and behavior remain for compatibility. ERROR
+enhancement is outside v0.1; v0.1 burst/random signoff focuses on OKAY.
+
+The active scope and implementation order are defined in `docs/V0_1_PLAN.md`.
+Frozen v0.0 details remain in `docs/V0_0_TECHNICAL_OVERVIEW.md`.
