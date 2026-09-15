@@ -33,6 +33,7 @@ package fpt_ahb_package;
     `include "master_agent/fpt_ahb_master_agent.svh"
 
     `include "slave_agent/fpt_ahb_slave_agent_cfg.svh"
+    `include "fpt_ahb_env_cfg.svh"
     `include "slave_agent/fpt_ahb_slave_driver.svh"
     `include "slave_agent/fpt_ahb_slave_monitor.svh"
     `include "slave_agent/fpt_ahb_slave_agent.svh"
