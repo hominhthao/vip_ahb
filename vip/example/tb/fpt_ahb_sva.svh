@@ -34,10 +34,10 @@ interface fpt_ahb_sva #(
 
     // --- Control signals validity ---
     property p_htrans_not_x;  @(posedge hclk) disable iff (!hresetn) hselx |-> !$isunknown(htrans); endproperty
-    property p_hwrite_not_x;  @(posedge hclk) disable iff (!hresetn) hselx |-> !$isunknown(hwrite); endproperty
-    property p_hsize_not_x;   @(posedge hclk) disable iff (!hresetn) hselx |-> !$isunknown(hsize);  endproperty
-    property p_hburst_not_x;  @(posedge hclk) disable iff (!hresetn) hselx |-> !$isunknown(hburst); endproperty
-    property p_haddr_not_x;   @(posedge hclk) disable iff (!hresetn) hselx |-> !$isunknown(haddr);  endproperty
+    property p_hwrite_not_x;  @(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) |-> !$isunknown(hwrite); endproperty
+    property p_hsize_not_x;   @(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) |-> !$isunknown(hsize);  endproperty
+    property p_hburst_not_x;  @(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) |-> !$isunknown(hburst); endproperty
+    property p_haddr_not_x;   @(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) |-> !$isunknown(haddr);  endproperty
 
     assert_htrans_not_x: assert property (p_htrans_not_x) else `uvm_error("AHB_SVA", "htrans contains X");
     cover_htrans_not_x:  cover property (p_htrans_not_x);

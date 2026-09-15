@@ -39,7 +39,6 @@ endtask
 task fpt_ahb_master_driver::reset_signals();
     wait (cfg.vif.hresetn === 1'b0);
     cfg.vif.cb_master.htrans <= 2'b00;
-    cfg.vif.cb_master.hselx  <= 0;
     pipeline_q.delete();
     wait (cfg.vif.hresetn === 1'b1);
 endtask
@@ -60,13 +59,11 @@ task fpt_ahb_master_driver::address_phase_thread();
             cfg.vif.cb_master.hburst <= req.burst;
             cfg.vif.cb_master.hprot  <= 4'b0011;
             cfg.vif.cb_master.htrans <= 2'b10;
-            cfg.vif.cb_master.hselx  <= 1'b1;
 
             pipeline_q.push_back(req);
             seq_item_port.item_done();
         end else begin
             cfg.vif.cb_master.htrans <= 2'b00;
-            cfg.vif.cb_master.hselx  <= 1'b0;
         end
     end
 endtask
