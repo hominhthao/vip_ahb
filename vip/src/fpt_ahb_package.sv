@@ -23,6 +23,12 @@ package fpt_ahb_package;
         FPT_AHB_ERROR = 1'b1
     } fpt_ahb_response_e;
 
+    typedef enum logic [1:0] {
+        FPT_AHB_ZERO_WAIT,
+        FPT_AHB_FIXED_WAIT,
+        FPT_AHB_RANDOM_WAIT
+    } fpt_ahb_wait_mode_e;
+
     `include "fpt_ahb_common_memory.svh"
     `include "fpt_ahb_master_transaction.svh"
     `include "fpt_ahb_slave_transaction.svh"

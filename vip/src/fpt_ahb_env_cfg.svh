@@ -93,6 +93,9 @@ function bit fpt_ahb_env_cfg::validate();
                        $sformatf("slave_cfgs[%0d].vif is null", i))
             return 0;
         end
+        if (!slave_cfgs[i].validate()) begin
+            return 0;
+        end
     end
 
     return 1;

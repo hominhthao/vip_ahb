@@ -16,7 +16,7 @@ class fpt_ahb_slave_transaction extends uvm_sequence_item;
     // Generated controls, not observed results. READ data is unused for WRITE.
     rand bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data;
     rand fpt_ahb_response_e response;
-    // No policy maximum yet; the future sequence must select a practical budget.
+    // Concrete response latency resolved by the active Slave response sequence.
     rand int unsigned wait_cycles;
 
     constraint c_response_defaults {

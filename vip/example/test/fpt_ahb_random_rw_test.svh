@@ -15,10 +15,9 @@ endfunction
 
 function void fpt_ahb_random_rw_test::build_phase(uvm_phase phase);
     super.build_phase(phase);
-    uvm_config_db#(uvm_object_wrapper)::set(this,
-                                            "env.slave_agent.sequencer.run_phase",
-                                            "default_sequence",
-                                            fpt_ahb_slave_wait_mem_seq::type_id::get());
+    env_cfg.slave_cfgs[0].wait_mode = FPT_AHB_RANDOM_WAIT;
+    env_cfg.slave_cfgs[0].min_wait_cycles = 0;
+    env_cfg.slave_cfgs[0].max_wait_cycles = 4;
 endfunction
 
 task fpt_ahb_random_rw_test::run_phase(uvm_phase phase);
