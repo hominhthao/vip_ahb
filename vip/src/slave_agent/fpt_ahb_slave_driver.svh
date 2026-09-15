@@ -85,8 +85,9 @@ task fpt_ahb_slave_driver::data_phase_thread();
         if (request_q.size() == 0) begin
             cfg.vif.cb_slave.hreadyout <= 1'b1;
             cfg.vif.cb_slave.hresp     <= 1'b0;
-            @(cfg.vif.cb_slave);
-            continue;
+            // Wake in the same cycle that the address thread queues a request,
+            // so the response policy is applied before its data phase can complete.
+            wait (request_q.size() > 0);
         end
 
         req = request_q.pop_front();
