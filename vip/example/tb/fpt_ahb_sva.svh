@@ -32,12 +32,26 @@ interface fpt_ahb_sva #(
     // 1. ASSERTION COVERAGE (SHARED PROPERTIES)
     // =========================================================================
 
+    sequence s_active_transfer;
+        hselx && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ});
+    endsequence
+
+    sequence s_accepted_transfer;
+        hselx && hready &&
+        (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ});
+    endsequence
+
+    sequence s_accepted_write;
+        hselx && hready && hwrite &&
+        (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ});
+    endsequence
+
     // --- Control signals validity ---
     property p_htrans_not_x;  @(posedge hclk) disable iff (!hresetn) hselx |-> !$isunknown(htrans); endproperty
-    property p_hwrite_not_x;  @(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) |-> !$isunknown(hwrite); endproperty
-    property p_hsize_not_x;   @(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) |-> !$isunknown(hsize);  endproperty
-    property p_hburst_not_x;  @(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) |-> !$isunknown(hburst); endproperty
-    property p_haddr_not_x;   @(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) |-> !$isunknown(haddr);  endproperty
+    property p_hwrite_not_x;  @(posedge hclk) disable iff (!hresetn) s_active_transfer |-> !$isunknown(hwrite); endproperty
+    property p_hsize_not_x;   @(posedge hclk) disable iff (!hresetn) s_active_transfer |-> !$isunknown(hsize);  endproperty
+    property p_hburst_not_x;  @(posedge hclk) disable iff (!hresetn) s_active_transfer |-> !$isunknown(hburst); endproperty
+    property p_haddr_not_x;   @(posedge hclk) disable iff (!hresetn) s_active_transfer |-> !$isunknown(haddr);  endproperty
 
     assert_htrans_not_x: assert property (p_htrans_not_x) else `uvm_error("AHB_SVA", "htrans contains X");
     cover_htrans_not_x:  cover property (p_htrans_not_x);
@@ -55,29 +69,37 @@ interface fpt_ahb_sva #(
     cover_haddr_not_x:   cover property (p_haddr_not_x);
 
     // --- Stability during wait ---
-    property p_haddr_stable;  @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(haddr);  endproperty
-    property p_htrans_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(htrans); endproperty
-    property p_hwrite_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(hwrite); endproperty
-    property p_hsize_stable;  @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(hsize);  endproperty
-    property p_hburst_stable; @(posedge hclk) disable iff (!hresetn) (hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ})) |=> $stable(hburst); endproperty
+    // A LOW HREADY holds the address/control phase visible in that cycle. The
+    // non-overlapped check permits a pipelined next phase to appear before the
+    // first LOW sample, then holds that phase through the accepting HIGH edge.
+    property p_haddr_stable;  @(posedge hclk) disable iff (!hresetn) !hready |=> $stable(haddr);  endproperty
+    property p_htrans_stable; @(posedge hclk) disable iff (!hresetn) !hready |=> $stable(htrans); endproperty
+    property p_hwrite_stable; @(posedge hclk) disable iff (!hresetn) !hready |=> $stable(hwrite); endproperty
+    property p_hsize_stable;  @(posedge hclk) disable iff (!hresetn) !hready |=> $stable(hsize);  endproperty
+    property p_hburst_stable; @(posedge hclk) disable iff (!hresetn) !hready |=> $stable(hburst); endproperty
+    property p_hprot_stable;  @(posedge hclk) disable iff (!hresetn) !hready |=> $stable(hprot);  endproperty
 
-    assert_haddr_stable:  assert property (p_haddr_stable)  else `uvm_error("AHB_SVA", "haddr unstable during wait state");
+    assert_haddr_stable:  assert property (p_haddr_stable)  else `uvm_error("AHB_WAIT_STABILITY", "haddr changed while HREADY was LOW");
     cover_haddr_stable:   cover property (p_haddr_stable);
-    assert_htrans_stable: assert property (p_htrans_stable) else `uvm_error("AHB_SVA", "htrans unstable during wait state");
+    assert_htrans_stable: assert property (p_htrans_stable) else `uvm_error("AHB_WAIT_STABILITY", "htrans changed while HREADY was LOW");
     cover_htrans_stable:  cover property (p_htrans_stable);
-    assert_hwrite_stable: assert property (p_hwrite_stable) else `uvm_error("AHB_SVA", "hwrite unstable during wait state");
+    assert_hwrite_stable: assert property (p_hwrite_stable) else `uvm_error("AHB_WAIT_STABILITY", "hwrite changed while HREADY was LOW");
     cover_hwrite_stable:  cover property (p_hwrite_stable);
-    assert_hsize_stable:  assert property (p_hsize_stable)  else `uvm_error("AHB_SVA", "hsize unstable during wait state");
+    assert_hsize_stable:  assert property (p_hsize_stable)  else `uvm_error("AHB_WAIT_STABILITY", "hsize changed while HREADY was LOW");
     cover_hsize_stable:   cover property (p_hsize_stable);
-    assert_hburst_stable: assert property (p_hburst_stable) else `uvm_error("AHB_SVA", "hburst unstable during wait state");
+    assert_hburst_stable: assert property (p_hburst_stable) else `uvm_error("AHB_WAIT_STABILITY", "hburst changed while HREADY was LOW");
     cover_hburst_stable:  cover property (p_hburst_stable);
+    assert_hprot_stable:  assert property (p_hprot_stable)  else `uvm_error("AHB_WAIT_STABILITY", "hprot changed while HREADY was LOW");
+    cover_hprot_stable:   cover property (p_hprot_stable);
 
     // --- Write Data valid ---
-    sequence s_write_addr_phase; (hselx && hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}) && hwrite); endsequence
-    property p_hwdata_valid; @(posedge hclk) disable iff (!hresetn) s_write_addr_phase ##1 (hready [->1]) |-> !($isunknown(hwdata)); endproperty
+    property p_hwdata_valid; @(posedge hclk) disable iff (!hresetn) s_accepted_write ##1 (hready [->1]) |-> !($isunknown(hwdata)); endproperty
+    property p_hwdata_stable; @(posedge hclk) disable iff (!hresetn) s_accepted_write ##1 !hready |=> $stable(hwdata) until_with hready; endproperty
 
     assert_hwdata_valid: assert property (p_hwdata_valid) else `uvm_error("AHB_SVA", "hwdata contains X during write");
     cover_hwdata_valid:  cover property (p_hwdata_valid);
+    assert_hwdata_stable: assert property (p_hwdata_stable) else `uvm_error("AHB_WAIT_HWDATA", "hwdata changed while its WRITE data phase was stalled");
+    cover_hwdata_stable:  cover property (p_hwdata_stable);
 
     // --- FSM transitions ---
     property p_trans_busy_seq;   @(posedge hclk) disable iff (!hresetn) (hready && $past(htrans) == `FPT_AHB_TR_BUSY && htrans == `FPT_AHB_TR_SEQ) |-> (haddr == $past(haddr)) && (hsize == $past(hsize)) && (hburst == $past(hburst)); endproperty
@@ -107,6 +129,9 @@ interface fpt_ahb_sva #(
     // 2. FUNCTIONAL COVERAGE (SCENARIO TRACKING ONLY)
     // =========================================================================
 
+    cover_accepted_transfer: cover property (@(posedge hclk) disable iff (!hresetn) s_accepted_transfer);
+    cover_presented_during_wait: cover property (@(posedge hclk) disable iff (!hresetn) hselx && !hready && (htrans inside {`FPT_AHB_TR_NONSEQ, `FPT_AHB_TR_SEQ}));
+
     cover_htrans_idle:   cover property (@(posedge hclk) disable iff (!hresetn) hready && htrans == 2'b00);
     cover_htrans_busy:   cover property (@(posedge hclk) disable iff (!hresetn) hselx && hready && htrans == 2'b01);
     cover_htrans_nonseq: cover property (@(posedge hclk) disable iff (!hresetn) hselx && hready && htrans == 2'b10);
@@ -122,7 +147,7 @@ interface fpt_ahb_sva #(
     cover_size_byte:   cover property (@(posedge hclk) disable iff (!hresetn) hselx && hready && htrans inside {2'b10, 2'b11} && hsize == 3'b000);
     cover_size_word:   cover property (@(posedge hclk) disable iff (!hresetn) hselx && hready && htrans inside {2'b10, 2'b11} && hsize == 3'b010);
 
-    cover_multi_wait:  cover property (@(posedge hclk) disable iff (!hresetn) (hselx && htrans inside {2'b10, 2'b11} && hready) ##1 (!hready)[*2:$] ##1 (hready));
+    cover_multi_wait:  cover property (@(posedge hclk) disable iff (!hresetn) s_accepted_transfer ##1 (!hready)[*2:$] ##1 hready);
 
 
 endinterface
