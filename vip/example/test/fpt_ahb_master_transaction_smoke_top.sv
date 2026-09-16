@@ -262,6 +262,7 @@ module fpt_ahb_master_transaction_smoke_top;
         beat_src.addr = 'h100;
         beat_src.direction = FPT_AHB_WRITE;
         beat_src.size = FPT_AHB_WORD;
+        beat_src.trans = FPT_AHB_NONSEQ;
         beat_src.write_data = 'h12345678;
         beat_src.response = FPT_AHB_OKAY;
 
@@ -293,6 +294,40 @@ module fpt_ahb_master_transaction_smoke_top;
             $display("PASS: HBURST %03b %s decoded and stored", i[2:0], names[i]);
         end
     endtask : check_full_burst_enum
+
+    task automatic check_full_trans_enum();
+        fpt_ahb_trans_e values[4];
+        string names[4];
+        fpt_ahb_beat_transaction observed;
+        fpt_ahb_beat_transaction copied;
+
+        values = '{FPT_AHB_IDLE, FPT_AHB_BUSY, FPT_AHB_NONSEQ, FPT_AHB_SEQ};
+        names = '{"FPT_AHB_IDLE", "FPT_AHB_BUSY", "FPT_AHB_NONSEQ", "FPT_AHB_SEQ"};
+        observed = fpt_ahb_beat_transaction::type_id::create("trans_observed");
+        copied = fpt_ahb_beat_transaction::type_id::create("trans_copied");
+        observed.addr = 'h100;
+        observed.direction = FPT_AHB_WRITE;
+        observed.size = FPT_AHB_WORD;
+        observed.burst = FPT_AHB_SINGLE;
+        observed.write_data = 'h12345678;
+        observed.response = FPT_AHB_OKAY;
+
+        for (int i = 0; i < 4; i++) begin
+            if (values[i] !== i[1:0] || values[i].name() != names[i])
+                $fatal(1, "HTRANS encoding/name mismatch for code %0d", i);
+            // This is the same bus-to-enum cast used by both Monitors.
+            if (!$cast(observed.trans, i[1:0]) || observed.trans !== values[i])
+                $fatal(1, "Beat observation cannot store HTRANS code %0d", i);
+            copied.copy(observed);
+            if (copied.trans !== values[i] || !observed.compare(copied))
+                $fatal(1, "HTRANS copy/compare failed for code %0d", i);
+            expect_text(observed.sprint(), names[i]);
+            copied.trans = values[(i + 1) % 4];
+            if (observed.compare(copied))
+                $fatal(1, "Beat compare ignored HTRANS code %0d", i);
+            $display("PASS: HTRANS %02b %s decoded and stored", i[1:0], names[i]);
+        end
+    endtask : check_full_trans_enum
 
     initial begin
         fpt_ahb_master_transaction tr;
@@ -383,6 +418,7 @@ module fpt_ahb_master_transaction_smoke_top;
         check_utilities();
         check_copy_clone();
         check_full_burst_enum();
+        check_full_trans_enum();
         $display("PASS: master transaction smoke test (100 random items: READ=%0d WRITE=%0d; forced READ/WRITE; 3 expected rejections)",
                  read_count, write_count);
         $finish;

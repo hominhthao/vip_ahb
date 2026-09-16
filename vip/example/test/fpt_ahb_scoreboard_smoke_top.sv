@@ -79,6 +79,7 @@ endclass
         tx.read_data = read_data;
         tx.size = FPT_AHB_WORD;
         tx.burst = FPT_AHB_SINGLE;
+        tx.trans = FPT_AHB_NONSEQ;
         tx.response = response;
         return tx;
     endfunction : make_master
@@ -99,6 +100,7 @@ endclass
         tx.read_data = read_data;
         tx.size = FPT_AHB_WORD;
         tx.burst = FPT_AHB_SINGLE;
+        tx.trans = FPT_AHB_NONSEQ;
         tx.response = response;
         tx.wait_cycles = 0;
         return tx;

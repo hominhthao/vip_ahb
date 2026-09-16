@@ -91,16 +91,18 @@ function void fpt_ahb_scoreboard::check_transfer(
     `uvm_info("FPT_AHB_SCB_COMPARE",
               $sformatf(
                         {"BEGIN transfer #%0d\n",
-                         "  MASTER: addr=0x%0h direction=%s size=%s burst=%s ",
+                         "  MASTER: addr=0x%0h direction=%s size=%s burst=%s trans=%s ",
                          "write_data=0x%0h read_data=0x%0h response=%s wait_cycles=%0d\n",
-                         "  SLAVE : addr=0x%0h direction=%s size=%s burst=%s ",
+                         "  SLAVE : addr=0x%0h direction=%s size=%s burst=%s trans=%s ",
                          "write_data=0x%0h read_data=0x%0h response=%s wait_cycles=%0d"},
                         checked_count + 1,
                         master_tx.addr, master_tx.direction.name(), master_tx.size.name(),
-                        master_tx.burst.name(), master_tx.write_data, master_tx.read_data,
+                        master_tx.burst.name(), master_tx.trans.name(),
+                        master_tx.write_data, master_tx.read_data,
                         master_tx.response.name(), master_tx.wait_cycles,
                         slave_tx.addr, slave_tx.direction.name(), slave_tx.size.name(),
-                        slave_tx.burst.name(), slave_tx.write_data, slave_tx.read_data,
+                        slave_tx.burst.name(), slave_tx.trans.name(),
+                        slave_tx.write_data, slave_tx.read_data,
                         slave_tx.response.name(), slave_tx.wait_cycles), UVM_LOW)
 
     if (master_tx.addr !== slave_tx.addr) begin

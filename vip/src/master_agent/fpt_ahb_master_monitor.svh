@@ -75,7 +75,8 @@ task fpt_ahb_master_monitor::collect_transactions();
 
         if (cfg.vif.cb_monitor.hready === 1'b1 &&
             cfg.vif.cb_monitor.hselx === 1'b1 &&
-            (cfg.vif.cb_monitor.htrans == 2'b10 || cfg.vif.cb_monitor.htrans == 2'b11)) begin
+            (cfg.vif.cb_monitor.htrans == FPT_AHB_NONSEQ ||
+             cfg.vif.cb_monitor.htrans == FPT_AHB_SEQ)) begin
 
             addr_phase_tx = fpt_ahb_beat_transaction::type_id::create("addr_phase_tx");
 
@@ -84,6 +85,7 @@ task fpt_ahb_master_monitor::collect_transactions();
 
             $cast(addr_phase_tx.size, cfg.vif.cb_monitor.hsize);
             $cast(addr_phase_tx.burst, cfg.vif.cb_monitor.hburst);
+            $cast(addr_phase_tx.trans, cfg.vif.cb_monitor.htrans);
 
             data_phase_tx = addr_phase_tx;
         end

@@ -57,7 +57,8 @@ task fpt_ahb_slave_driver::address_phase_thread();
 
         if (cfg.vif.cb_slave.hready === 1'b1 &&
             cfg.vif.cb_slave.hselx === 1'b1 &&
-            (cfg.vif.cb_slave.htrans == 2'b10 || cfg.vif.cb_slave.htrans == 2'b11)) begin
+            (cfg.vif.cb_slave.htrans == FPT_AHB_NONSEQ ||
+             cfg.vif.cb_slave.htrans == FPT_AHB_SEQ)) begin
 
             incoming_req = fpt_ahb_slave_transaction::type_id::create("incoming_req");
             incoming_req.addr = cfg.vif.cb_slave.haddr;
