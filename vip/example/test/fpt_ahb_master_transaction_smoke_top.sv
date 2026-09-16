@@ -202,6 +202,8 @@ module fpt_ahb_master_transaction_smoke_top;
             $fatal(1, "Factory returned null");
         if (tr.size !== FPT_AHB_WORD || tr.burst !== FPT_AHB_SINGLE)
             $fatal(1, "Incorrect constructor defaults");
+        if (!tr.size.rand_mode() || !tr.burst.rand_mode())
+            $fatal(1, "Configurable protocol metadata is not randomizable");
 
         // Sentinels detect unintended changes to non-random result fields.
         tr.read_data = 'hA5A55A5A;
@@ -252,20 +254,16 @@ module fpt_ahb_master_transaction_smoke_top;
             $fatal(1, "Misaligned address was accepted");
 
         $display("EXPECT REJECTION: unsupported size");
-        tr.size = fpt_ahb_size_e'(3'b000);
-        if (tr.randomize())
+        if (tr.randomize() with { size != FPT_AHB_WORD; })
             $fatal(1, "Unsupported size was accepted");
-        if (tr.size !== fpt_ahb_size_e'(3'b000))
-            $fatal(1, "Randomization repaired non-random size");
-        tr.size = FPT_AHB_WORD;
+        if (tr.size !== FPT_AHB_WORD)
+            $fatal(1, "Failed size randomization changed the legal value");
 
         $display("EXPECT REJECTION: unsupported burst");
-        tr.burst = fpt_ahb_burst_e'(3'b001);
-        if (tr.randomize())
+        if (tr.randomize() with { burst != FPT_AHB_SINGLE; })
             $fatal(1, "Unsupported burst was accepted");
-        if (tr.burst !== fpt_ahb_burst_e'(3'b001))
-            $fatal(1, "Randomization repaired non-random burst");
-        tr.burst = FPT_AHB_SINGLE;
+        if (tr.burst !== FPT_AHB_SINGLE)
+            $fatal(1, "Failed burst randomization changed the legal value");
 
         if (!tr.randomize())
             $fatal(1, "Randomization failed after restoring legal state");
