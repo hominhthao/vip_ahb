@@ -38,7 +38,7 @@ endtask
 
 task fpt_ahb_master_driver::reset_signals();
     wait (cfg.vif.hresetn === 1'b0);
-    cfg.vif.cb_master.htrans <= 2'b00;
+    cfg.vif.cb_master.htrans <= FPT_AHB_IDLE;
     pipeline_q.delete();
     wait (cfg.vif.hresetn === 1'b1);
 endtask
@@ -56,7 +56,7 @@ task fpt_ahb_master_driver::address_phase_thread();
             // Chèn IDLE (WAIT cycles) nếu có yêu cầu từ cấu hình
             if (req.master_delay > 0) begin
                 repeat (req.master_delay) begin
-                    cfg.vif.cb_master.htrans <= 2'b00; // IDLE
+                    cfg.vif.cb_master.htrans <= FPT_AHB_IDLE; // IDLE
                     @(cfg.vif.cb_master);
                     while (cfg.vif.cb_master.hready === 1'b0) @(cfg.vif.cb_master);
                 end
@@ -67,12 +67,12 @@ task fpt_ahb_master_driver::address_phase_thread();
             cfg.vif.cb_master.hsize  <= req.size;
             cfg.vif.cb_master.hburst <= req.burst;
             cfg.vif.cb_master.hprot  <= 4'b0011;
-            cfg.vif.cb_master.htrans <= 2'b10; // NONSEQ
+            cfg.vif.cb_master.htrans <= FPT_AHB_NONSEQ; // NONSEQ
 
             pipeline_q.push_back(req);
             seq_item_port.item_done();
         end else begin
-            cfg.vif.cb_master.htrans <= 2'b00;
+            cfg.vif.cb_master.htrans <= FPT_AHB_IDLE;
         end
     end
 endtask
@@ -99,7 +99,7 @@ task fpt_ahb_master_driver::data_phase_thread();
 
         // --- Bắt đầu Data Phase ---
         if (current_tx.direction == FPT_AHB_WRITE) begin
-            cfg.vif.cb_master.hwdata <= current_tx.write_data;
+            cfg.vif.cb_master.hwdata <= current_tx.write_data[0];
         end
 
         // Chờ Slave phản hồi Data Phase
@@ -115,7 +115,8 @@ task fpt_ahb_master_driver::data_phase_thread();
         end while (cfg.vif.cb_master.hready === 1'b0);
 
         if (current_tx.direction == FPT_AHB_READ) begin
-            current_tx.read_data = cfg.vif.cb_master.hrdata;
+            current_tx.read_data = new[1];
+            current_tx.read_data[0] = cfg.vif.cb_master.hrdata;
         end
         current_tx.response = (cfg.vif.cb_master.hresp == 1'b1) ? FPT_AHB_ERROR : FPT_AHB_OKAY;
 

@@ -9,7 +9,7 @@ class fpt_ahb_master_agent extends uvm_agent;
     fpt_ahb_master_monitor   monitor;
 
     fpt_ahb_master_agent_cfg cfg;
-    uvm_analysis_port #(fpt_ahb_master_transaction) ap;
+    uvm_analysis_port #(fpt_ahb_beat_transaction) ap;
 
     extern function new(string name = "fpt_ahb_master_agent", uvm_component parent = null);
     extern virtual function void build_phase(uvm_phase phase);

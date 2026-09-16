@@ -7,10 +7,9 @@ class fpt_ahb_system_checker extends uvm_scoreboard;
     typedef bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr_t;
     typedef bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] data_t;
 
-    uvm_tlm_analysis_fifo #(fpt_ahb_master_transaction) master_fifo;
-    uvm_tlm_analysis_fifo #(fpt_ahb_slave_transaction)  slave_fifo;
+    uvm_tlm_analysis_fifo #(fpt_ahb_beat_transaction) master_fifo;
+    uvm_tlm_analysis_fifo #(fpt_ahb_beat_transaction)  slave_fifo;
     uvm_tlm_analysis_fifo #(data_t)                     expected_fifo;
-
     bit has_predictor = 1;
     
     int expected_count = -1;
@@ -26,11 +25,10 @@ class fpt_ahb_system_checker extends uvm_scoreboard;
     extern virtual function void check_phase(uvm_phase phase);
     extern virtual function void report_phase(uvm_phase phase);
     extern function void check_transfer(
-                                        fpt_ahb_master_transaction master_tx,
-                                        fpt_ahb_slave_transaction slave_tx,
+                                        fpt_ahb_beat_transaction master_tx,
+                                        fpt_ahb_beat_transaction slave_tx,
                                         bit has_expected_data,
-                                        data_t expected_data
-                                        );
+                                        data_t expected_data                                        );
     extern function void report_mismatch(string message);
 endclass : fpt_ahb_system_checker
 
@@ -56,11 +54,10 @@ endfunction : build_phase
 // Description: Implementation of run_phase
 //---------------
 task fpt_ahb_system_checker::run_phase(uvm_phase phase);
-    fpt_ahb_master_transaction master_tx;
-    fpt_ahb_slave_transaction  slave_tx;
+    fpt_ahb_beat_transaction master_tx;
+    fpt_ahb_beat_transaction  slave_tx;
     data_t expected_data;
     bit    has_expected_data;
-
     forever begin
         has_expected_data = 1'b0;
         master_fifo.get(master_tx);
@@ -82,12 +79,11 @@ endtask : run_phase
 // Description: Implementation of check_transfer
 //---------------
 function void fpt_ahb_system_checker::check_transfer(
-                                                     fpt_ahb_master_transaction master_tx,
-                                                     fpt_ahb_slave_transaction slave_tx,
+                                                     fpt_ahb_beat_transaction master_tx,
+                                                     fpt_ahb_beat_transaction slave_tx,
                                                      bit has_expected_data,
                                                      data_t expected_data
-                                                     );
-    int unsigned mismatch_count_before;
+                                                     );    int unsigned mismatch_count_before;
     bit          request_matches;
 
     mismatch_count_before = mismatch_count;
@@ -102,16 +98,18 @@ function void fpt_ahb_system_checker::check_transfer(
     `uvm_info("FPT_AHB_CHK_COMPARE",
               $sformatf(
                         {"BEGIN transfer #%0d\n",
-                         "  MASTER: addr=0x%0h direction=%s size=%s burst=%s ",
-                         "write_data=0x%0h read_data=0x%0h response=%s\n",
-                         "  SLAVE : addr=0x%0h direction=%s size=%s burst=%s ",
+                         "  MASTER: addr=0x%0h direction=%s size=%s burst=%s trans=%s ",
+                         "write_data=0x%0h read_data=0x%0h response=%s wait_cycles=%0d\n",
+                         "  SLAVE : addr=0x%0h direction=%s size=%s burst=%s trans=%s ",
                          "write_data=0x%0h read_data=0x%0h response=%s wait_cycles=%0d"},
                         checked_count + 1,
                         master_tx.addr, master_tx.direction.name(), master_tx.size.name(),
-                        master_tx.burst.name(), master_tx.write_data, master_tx.read_data,
-                        master_tx.response.name(),
+                        master_tx.burst.name(), master_tx.trans.name(),
+                        master_tx.write_data, master_tx.read_data,
+                        master_tx.response.name(), master_tx.wait_cycles,
                         slave_tx.addr, slave_tx.direction.name(), slave_tx.size.name(),
-                        slave_tx.burst.name(), slave_tx.write_data, slave_tx.read_data,
+                        slave_tx.burst.name(), slave_tx.trans.name(),
+                        slave_tx.write_data, slave_tx.read_data,
                         slave_tx.response.name(), slave_tx.wait_cycles), UVM_LOW)
 
     // 1. Transaction/Bus Integrity Check
@@ -137,8 +135,8 @@ function void fpt_ahb_system_checker::check_transfer(
     end
     
     if (master_tx.direction == FPT_AHB_WRITE &&
-        slave_tx.direction == FPT_AHB_WRITE &&
-        master_tx.write_data !== slave_tx.write_data) begin
+                 slave_tx.direction == FPT_AHB_WRITE &&
+                 master_tx.write_data !== slave_tx.write_data) begin
         report_mismatch($sformatf("Write data mismatch at 0x%0h: master=0x%0h slave=0x%0h",
                                   master_tx.addr, master_tx.write_data,
                                   slave_tx.write_data));

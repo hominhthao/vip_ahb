@@ -3,9 +3,13 @@ module fpt_ahb_master_transaction_smoke_top;
     import fpt_ahb_package::*;
 
     function automatic void log_transaction(string label, fpt_ahb_master_transaction tr);
-        $display("%s direction=%s addr=0x%h write_data=0x%h size=%s burst=%s read_data=0x%h response=%s",
-                 label, tr.direction.name(), tr.addr, tr.write_data,
-                 tr.size.name(), tr.burst.name(), tr.read_data, tr.response.name());
+        $display("%s direction=%s start_addr=0x%h size=%s burst=%s num_beats=%0d write_beats=%0d read_results=%0d response=%s",
+                 label, tr.direction.name(), tr.addr, tr.size.name(), tr.burst.name(),
+                 tr.num_beats, tr.write_data.size(), tr.read_data.size(), tr.response.name());
+        foreach (tr.write_data[i])
+            $display("  write_data[%0d]=0x%h", i, tr.write_data[i]);
+        foreach (tr.read_data[i])
+            $display("  read_data[%0d]=0x%h", i, tr.read_data[i]);
     endfunction : log_transaction
 
     function automatic void expect_text(string text, string expected);
@@ -42,10 +46,14 @@ module fpt_ahb_master_transaction_smoke_top;
         rhs.addr = 'h100;
         lhs.direction = FPT_AHB_WRITE;
         rhs.direction = FPT_AHB_WRITE;
-        lhs.write_data = 'h12345678;
-        rhs.write_data = 'h12345678;
-        lhs.read_data = 'hA5A55A5A;
-        rhs.read_data = 'hA5A55A5A;
+        lhs.write_data = new[1];
+        rhs.write_data = new[1];
+        lhs.write_data[0] = 'h12345678;
+        rhs.write_data[0] = 'h12345678;
+        lhs.read_data = new[1];
+        rhs.read_data = new[1];
+        lhs.read_data[0] = 'hA5A55A5A;
+        rhs.read_data[0] = 'hA5A55A5A;
         lhs.response = FPT_AHB_OKAY;
         rhs.response = FPT_AHB_OKAY;
         check_compare("equal WRITE requests", lhs, rhs, 1);
@@ -61,10 +69,23 @@ module fpt_ahb_master_transaction_smoke_top;
         rhs.burst = fpt_ahb_burst_e'(3'b001);
         check_compare("different burst", lhs, rhs, 0);
         rhs.burst = lhs.burst;
-        rhs.write_data = 'h87654321;
+        rhs.num_beats = 2;
+        check_compare("different requested beat count", lhs, rhs, 0);
+        rhs.num_beats = lhs.num_beats;
+        rhs.write_data[0] = 'h87654321;
         check_compare("different WRITE payload", lhs, rhs, 0);
         rhs.write_data = lhs.write_data;
-        rhs.read_data = 'x;
+        rhs.write_data = new[2](rhs.write_data);
+        check_compare("different WRITE payload count", lhs, rhs, 0);
+        lhs.write_data = new[2](lhs.write_data);
+        lhs.write_data[1] = 'hCAFEBABE;
+        rhs.write_data[1] = 'h1234ABCD;
+        check_compare("different later WRITE payload", lhs, rhs, 0);
+        rhs.write_data[1] = lhs.write_data[1];
+        check_compare("equal multi-beat WRITE request storage", lhs, rhs, 1);
+        lhs.write_data = new[1](lhs.write_data);
+        rhs.write_data = new[1](rhs.write_data);
+        rhs.read_data[0] = 'x;
         check_compare("WRITE ignores read_data", lhs, rhs, 1);
         rhs.response = FPT_AHB_ERROR;
         check_compare("WRITE ignores response", lhs, rhs, 1);
@@ -73,9 +94,9 @@ module fpt_ahb_master_transaction_smoke_top;
         rhs.read_data = lhs.read_data;
         rhs.response = lhs.response;
         check_compare("equal READ requests", lhs, rhs, 1);
-        rhs.write_data = '1;
+        rhs.write_data[0] = '1;
         check_compare("READ ignores write_data", lhs, rhs, 1);
-        rhs.read_data = 'z;
+        rhs.read_data[0] = 'z;
         check_compare("READ ignores read_data", lhs, rhs, 1);
         rhs.response = FPT_AHB_ERROR;
         check_compare("READ ignores response", lhs, rhs, 1);
@@ -86,7 +107,8 @@ module fpt_ahb_master_transaction_smoke_top;
         printed = lhs.sprint();
         expect_text(printed, "addr");
         expect_text(printed, "100");
-        expect_text(printed, "write_data");
+        expect_text(printed, "write_data_count");
+        expect_text(printed, "write_data[0]");
         expect_text(printed, "12345678");
         expect_text(printed, "direction");
         expect_text(printed, "FPT_AHB_READ");
@@ -94,7 +116,9 @@ module fpt_ahb_master_transaction_smoke_top;
         expect_text(printed, "FPT_AHB_WORD");
         expect_text(printed, "burst");
         expect_text(printed, "FPT_AHB_SINGLE");
-        expect_text(printed, "read_data");
+        expect_text(printed, "num_beats");
+        expect_text(printed, "read_data_count");
+        expect_text(printed, "read_data[0]");
         expect_text(printed, "a5a55a5a");
         expect_text(printed, "response");
         expect_text(printed, "FPT_AHB_OKAY");
@@ -105,21 +129,23 @@ module fpt_ahb_master_transaction_smoke_top;
         printed = lhs.sprint();
         expect_text(printed, "FPT_AHB_WRITE");
         expect_text(printed, "FPT_AHB_ERROR");
-        lhs.read_data = 'x;
+        lhs.read_data[0] = 'x;
         lhs.response = fpt_ahb_response_e'(1'bx);
         printed = lhs.sprint();
         expect_text(printed, "'hx");
         expect_text(printed, "'bx");
         $display("PRINT: unknown result fields\n%s", printed);
-        if (lhs.read_data !== 'x || lhs.response !== 1'bx)
+        if (lhs.read_data.size() != 1 || lhs.read_data[0] !== 'x ||
+            lhs.response !== 1'bx)
             $fatal(1, "Print changed unknown result fields");
-        lhs.read_data = 'z;
+        lhs.read_data[0] = 'z;
         lhs.response = fpt_ahb_response_e'(1'bz);
         printed = lhs.sprint();
         expect_text(printed, "'hz");
         expect_text(printed, "'bz");
         $display("PRINT: high-impedance result fields\n%s", printed);
-        if (lhs.read_data !== 'z || lhs.response !== 1'bz)
+        if (lhs.read_data.size() != 1 || lhs.read_data[0] !== 'z ||
+            lhs.response !== 1'bz)
             $fatal(1, "Print changed high-impedance result fields");
         $display("PASS: request compare and full-field print checks");
     endtask : check_utilities
@@ -130,14 +156,24 @@ module fpt_ahb_master_transaction_smoke_top;
             $fatal(1, "%s: addr was not preserved", label);
         if (actual.direction !== expected.direction)
             $fatal(1, "%s: direction was not preserved", label);
-        if (actual.write_data !== expected.write_data)
-            $fatal(1, "%s: write_data was not preserved", label);
+        if (actual.write_data.size() != expected.write_data.size())
+            $fatal(1, "%s: write_data size was not preserved", label);
+        foreach (expected.write_data[i]) begin
+            if (actual.write_data[i] !== expected.write_data[i])
+                $fatal(1, "%s: write_data[%0d] was not preserved", label, i);
+        end
         if (actual.size !== expected.size)
             $fatal(1, "%s: size was not preserved", label);
         if (actual.burst !== expected.burst)
             $fatal(1, "%s: burst was not preserved", label);
-        if (actual.read_data !== expected.read_data)
-            $fatal(1, "%s: read_data was not preserved", label);
+        if (actual.num_beats !== expected.num_beats)
+            $fatal(1, "%s: num_beats was not preserved", label);
+        if (actual.read_data.size() != expected.read_data.size())
+            $fatal(1, "%s: read_data size was not preserved", label);
+        foreach (expected.read_data[i]) begin
+            if (actual.read_data[i] !== expected.read_data[i])
+                $fatal(1, "%s: read_data[%0d] was not preserved", label, i);
+        end
         if (actual.response !== expected.response)
             $fatal(1, "%s: response was not preserved", label);
     endfunction : check_all_fields
@@ -155,19 +191,27 @@ module fpt_ahb_master_transaction_smoke_top;
         for (int i = 0; i < 2; i++) begin
             src.addr = (i == 0) ? 'h100 : 'h204;
             src.direction = (i == 0) ? FPT_AHB_READ : FPT_AHB_WRITE;
-            src.write_data = (i == 0) ? 'h12345678 : 'h87654321;
-            // Invalid enum state is deliberate: copying is not randomization
-            // and must preserve stored values, not repair them to defaults.
+            src.write_data = new[2];
+            src.write_data[0] = (i == 0) ? 'h12345678 : 'h87654321;
+            src.write_data[1] = (i == 0) ? 'hCAFEBABE : 'h0BADF00D;
+            // Copying is not randomization: preserve an unsupported size and
+            // a valid non-SINGLE burst without changing the traffic constraint.
             src.size = (i == 0) ? FPT_AHB_WORD : fpt_ahb_size_e'(3'b000);
-            src.burst = (i == 0) ? FPT_AHB_SINGLE : fpt_ahb_burst_e'(3'b001);
-            src.read_data = (i == 0) ? 'hA5A55A5A : 'hxxxxzzzz;
+            src.burst = (i == 0) ? FPT_AHB_SINGLE : FPT_AHB_INCR;
+            src.num_beats = (i == 0) ? 1 : 2;
+            src.read_data = new[2];
+            src.read_data[0] = (i == 0) ? 'hA5A55A5A : 'hxxxxzzzz;
+            src.read_data[1] = (i == 0) ? 'h5A5AA5A5 : 'hzzzzxxxx;
             src.response = (i == 0) ? FPT_AHB_ERROR : FPT_AHB_OKAY;
             dst.addr = 'h300;
             dst.direction = (i == 0) ? FPT_AHB_WRITE : FPT_AHB_READ;
-            dst.write_data = '0;
+            dst.write_data = new[1];
+            dst.write_data[0] = '0;
             dst.size = (i == 0) ? fpt_ahb_size_e'(3'b000) : FPT_AHB_WORD;
-            dst.burst = (i == 0) ? fpt_ahb_burst_e'(3'b001) : FPT_AHB_SINGLE;
-            dst.read_data = '0;
+            dst.burst = (i == 0) ? FPT_AHB_INCR : FPT_AHB_SINGLE;
+            dst.num_beats = (i == 0) ? 2 : 1;
+            dst.read_data = new[1];
+            dst.read_data[0] = '0;
             dst.response = (i == 0) ? FPT_AHB_OKAY : FPT_AHB_ERROR;
 
             dst.copy(src);
@@ -182,15 +226,182 @@ module fpt_ahb_master_transaction_smoke_top;
             check_all_fields("clone", cloned, src);
             cloned.addr = 'h400;
             cloned.direction = dst.direction == FPT_AHB_READ ? FPT_AHB_WRITE : FPT_AHB_READ;
-            cloned.write_data = '1;
+            cloned.write_data[0] = '1;
+            cloned.write_data = new[1](cloned.write_data);
             cloned.size = fpt_ahb_size_e'(3'b111);
-            cloned.burst = fpt_ahb_burst_e'(3'b111);
-            cloned.read_data = '0;
+            cloned.burst = FPT_AHB_INCR16;
+            cloned.num_beats = 16;
+            cloned.read_data[0] = '0;
+            cloned.read_data = new[1](cloned.read_data);
             cloned.response = dst.response == FPT_AHB_OKAY ? FPT_AHB_ERROR : FPT_AHB_OKAY;
             check_all_fields("original after clone mutation", src, dst);
             $display("PASS: master clone all fields and independence case %0d", i);
         end
     endtask : check_copy_clone
+
+    task automatic check_full_burst_enum();
+        fpt_ahb_burst_e values[8];
+        string names[8];
+        fpt_ahb_master_transaction master_src;
+        fpt_ahb_master_transaction master_dst;
+        fpt_ahb_slave_transaction slave_src;
+        fpt_ahb_slave_transaction slave_dst;
+        fpt_ahb_beat_transaction beat_src;
+        fpt_ahb_beat_transaction beat_dst;
+
+        values = '{FPT_AHB_SINGLE, FPT_AHB_INCR, FPT_AHB_WRAP4, FPT_AHB_INCR4,
+                   FPT_AHB_WRAP8, FPT_AHB_INCR8, FPT_AHB_WRAP16, FPT_AHB_INCR16};
+        names = '{"FPT_AHB_SINGLE", "FPT_AHB_INCR", "FPT_AHB_WRAP4", "FPT_AHB_INCR4",
+                  "FPT_AHB_WRAP8", "FPT_AHB_INCR8", "FPT_AHB_WRAP16", "FPT_AHB_INCR16"};
+        master_src = fpt_ahb_master_transaction::type_id::create("burst_master_src");
+        master_dst = fpt_ahb_master_transaction::type_id::create("burst_master_dst");
+        slave_src = fpt_ahb_slave_transaction::type_id::create("burst_slave_src");
+        slave_dst = fpt_ahb_slave_transaction::type_id::create("burst_slave_dst");
+        beat_src = fpt_ahb_beat_transaction::type_id::create("burst_beat_src");
+        beat_dst = fpt_ahb_beat_transaction::type_id::create("burst_beat_dst");
+
+        master_src.addr = 'h100;
+        master_src.direction = FPT_AHB_WRITE;
+        master_src.write_data = new[1];
+        master_src.write_data[0] = 'h12345678;
+        slave_src.addr = 'h100;
+        slave_src.direction = FPT_AHB_WRITE;
+        slave_src.write_data = 'h12345678;
+        slave_src.response = FPT_AHB_OKAY;
+        beat_src.addr = 'h100;
+        beat_src.direction = FPT_AHB_WRITE;
+        beat_src.size = FPT_AHB_WORD;
+        beat_src.trans = FPT_AHB_NONSEQ;
+        beat_src.write_data = 'h12345678;
+        beat_src.response = FPT_AHB_OKAY;
+
+        for (int i = 0; i < 8; i++) begin
+            if (values[i] !== i[2:0] || values[i].name() != names[i])
+                $fatal(1, "HBURST encoding/name mismatch for code %0d", i);
+
+            // Same cast and destination type used by both bus Monitors.
+            if (!$cast(beat_src.burst, i[2:0]) || beat_src.burst !== values[i])
+                $fatal(1, "Beat observation cannot decode HBURST code %0d", i);
+            if (!$cast(slave_src.burst, i[2:0]) || slave_src.burst !== values[i])
+                $fatal(1, "Slave request context cannot decode HBURST code %0d", i);
+            master_src.burst = values[i];
+
+            master_dst.copy(master_src);
+            slave_dst.copy(slave_src);
+            beat_dst.copy(beat_src);
+            if (master_dst.burst !== values[i] || !master_src.compare(master_dst) ||
+                slave_dst.burst !== values[i] || !slave_src.compare(slave_dst) ||
+                beat_dst.burst !== values[i] || !beat_src.compare(beat_dst))
+                $fatal(1, "HBURST copy/compare failed for code %0d", i);
+            expect_text(master_src.sprint(), names[i]);
+            expect_text(slave_src.sprint(), names[i]);
+            expect_text(beat_src.sprint(), names[i]);
+
+            beat_dst.burst = values[(i + 1) % 8];
+            if (beat_src.compare(beat_dst))
+                $fatal(1, "Beat compare ignored HBURST for code %0d", i);
+            $display("PASS: HBURST %03b %s decoded and stored", i[2:0], names[i]);
+        end
+    endtask : check_full_burst_enum
+
+    task automatic check_full_trans_enum();
+        fpt_ahb_trans_e values[4];
+        string names[4];
+        fpt_ahb_beat_transaction observed;
+        fpt_ahb_beat_transaction copied;
+
+        values = '{FPT_AHB_IDLE, FPT_AHB_BUSY, FPT_AHB_NONSEQ, FPT_AHB_SEQ};
+        names = '{"FPT_AHB_IDLE", "FPT_AHB_BUSY", "FPT_AHB_NONSEQ", "FPT_AHB_SEQ"};
+        observed = fpt_ahb_beat_transaction::type_id::create("trans_observed");
+        copied = fpt_ahb_beat_transaction::type_id::create("trans_copied");
+        observed.addr = 'h100;
+        observed.direction = FPT_AHB_WRITE;
+        observed.size = FPT_AHB_WORD;
+        observed.burst = FPT_AHB_SINGLE;
+        observed.write_data = 'h12345678;
+        observed.response = FPT_AHB_OKAY;
+
+        for (int i = 0; i < 4; i++) begin
+            if (values[i] !== i[1:0] || values[i].name() != names[i])
+                $fatal(1, "HTRANS encoding/name mismatch for code %0d", i);
+            // This is the same bus-to-enum cast used by both Monitors.
+            if (!$cast(observed.trans, i[1:0]) || observed.trans !== values[i])
+                $fatal(1, "Beat observation cannot store HTRANS code %0d", i);
+            copied.copy(observed);
+            if (copied.trans !== values[i] || !observed.compare(copied))
+                $fatal(1, "HTRANS copy/compare failed for code %0d", i);
+            expect_text(observed.sprint(), names[i]);
+            copied.trans = values[(i + 1) % 4];
+            if (observed.compare(copied))
+                $fatal(1, "Beat compare ignored HTRANS code %0d", i);
+            $display("PASS: HTRANS %02b %s decoded and stored", i[1:0], names[i]);
+        end
+    endtask : check_full_trans_enum
+
+    task automatic check_burst_length_policy();
+        fpt_ahb_master_transaction request;
+        fpt_ahb_master_transaction read_request;
+        fpt_ahb_burst_e fixed_bursts[7];
+        int unsigned fixed_counts[7];
+        int unsigned wrong_count;
+
+        fixed_bursts = '{FPT_AHB_SINGLE, FPT_AHB_WRAP4, FPT_AHB_INCR4,
+                         FPT_AHB_WRAP8, FPT_AHB_INCR8, FPT_AHB_WRAP16,
+                         FPT_AHB_INCR16};
+        fixed_counts = '{1, 4, 4, 8, 8, 16, 16};
+        request = fpt_ahb_master_transaction::type_id::create("length_request");
+        request.c_v0_0_transfer.constraint_mode(0);
+        request.addr = 'h100;
+        request.addr.rand_mode(0);
+        request.size = FPT_AHB_WORD;
+        request.size.rand_mode(0);
+        request.direction = FPT_AHB_WRITE;
+        request.direction.rand_mode(0);
+        request.burst.rand_mode(0);
+
+        foreach (fixed_bursts[i]) begin
+            request.burst = fixed_bursts[i];
+            if (!request.randomize() || request.num_beats != fixed_counts[i] ||
+                request.write_data.size() != fixed_counts[i])
+                $fatal(1, "%s did not produce %0d payload beats",
+                       request.burst.name(), fixed_counts[i]);
+            wrong_count = fixed_counts[i] + 1;
+            if (request.randomize() with { num_beats == local::wrong_count; })
+                $fatal(1, "%s accepted wrong beat count %0d",
+                       request.burst.name(), wrong_count);
+            $display("PASS: %s requires %0d beats", fixed_bursts[i].name(),
+                     fixed_counts[i]);
+        end
+
+        request.burst = FPT_AHB_INCR;
+        request.addr = 'h3F0;
+        if (!request.randomize() with { num_beats == 4; } ||
+            request.write_data.size() != 4)
+            $fatal(1, "INCR at 0x3F0 rejected four WORD beats");
+        if (request.randomize() with { num_beats == 5; })
+            $fatal(1, "INCR at 0x3F0 accepted five WORD beats across 1 KB");
+        if (request.randomize() with { num_beats == 0; })
+            $fatal(1, "INCR accepted zero beats");
+        $display("PASS: INCR at 0x3F0 accepts 4 and rejects 5/0 beats");
+
+        request.addr = 'h100;
+        if (!request.randomize() with { num_beats == 32; } ||
+            request.write_data.size() != 32)
+            $fatal(1, "INCR at 0x100 rejected legal 32-beat request");
+        $display("PASS: INCR at 0x100 accepts 32 beats without an arbitrary cap");
+
+        read_request = fpt_ahb_master_transaction::type_id::create("length_read_request");
+        read_request.c_v0_0_transfer.constraint_mode(0);
+        if (!read_request.randomize() with {
+            direction == FPT_AHB_READ;
+            burst == FPT_AHB_INCR;
+            size == FPT_AHB_WORD;
+            addr == 'h100;
+            num_beats == 8;
+        } || read_request.read_data.size() != 0)
+            $fatal(1, "READ request pre-filled runtime result array");
+        $display("PASS: READ result array remains empty and runtime-derived");
+    endtask : check_burst_length_policy
 
     initial begin
         fpt_ahb_master_transaction tr;
@@ -200,11 +411,18 @@ module fpt_ahb_master_transaction_smoke_top;
         tr = fpt_ahb_master_transaction::type_id::create("tr");
         if (tr == null)
             $fatal(1, "Factory returned null");
-        if (tr.size !== FPT_AHB_WORD || tr.burst !== FPT_AHB_SINGLE)
+        if (tr.size !== FPT_AHB_WORD || tr.burst !== FPT_AHB_SINGLE ||
+            tr.num_beats != 1)
             $fatal(1, "Incorrect constructor defaults");
+        if (!tr.size.rand_mode() || !tr.burst.rand_mode() ||
+            !tr.num_beats.rand_mode())
+            $fatal(1, "Configurable protocol metadata is not randomizable");
+        if (tr.write_data.size() != 0 || tr.read_data.size() != 0)
+            $fatal(1, "New transaction should not contain ungenerated beats");
 
         // Sentinels detect unintended changes to non-random result fields.
-        tr.read_data = 'hA5A55A5A;
+        tr.read_data = new[1];
+        tr.read_data[0] = 'hA5A55A5A;
         tr.response = FPT_AHB_ERROR;
         $display("NOTE: read_data/response are test sentinels, not DUT results.");
         for (int i = 0; i < 100; i++) begin
@@ -213,9 +431,13 @@ module fpt_ahb_master_transaction_smoke_top;
             log_transaction($sformatf("RANDOM[%0d]", i), tr);
             if (tr.addr[1:0] !== 2'b00)
                 $fatal(1, "Random address is not word-aligned");
-            if (tr.size !== FPT_AHB_WORD || tr.burst !== FPT_AHB_SINGLE)
+            if (tr.size !== FPT_AHB_WORD || tr.burst !== FPT_AHB_SINGLE ||
+                tr.num_beats != 1)
                 $fatal(1, "Unsupported transfer generated");
-            if (tr.read_data !== 'hA5A55A5A || tr.response !== FPT_AHB_ERROR)
+            if (tr.write_data.size() != 1)
+                $fatal(1, "SINGLE request does not contain exactly one WRITE payload beat");
+            if (tr.read_data.size() != 1 || tr.read_data[0] !== 'hA5A55A5A ||
+                tr.response !== FPT_AHB_ERROR)
                 $fatal(1, "Randomization changed result fields");
             case (tr.direction)
                 FPT_AHB_READ: read_count++;
@@ -226,24 +448,27 @@ module fpt_ahb_master_transaction_smoke_top;
 
         // Force each direction so both are tested independently of the seed.
         // A READ may retain a nonzero write payload.
-        tr.read_data = 'x;
+        tr.read_data[0] = 'x;
         tr.response = FPT_AHB_OKAY;
         if (!tr.randomize() with {
             direction == FPT_AHB_READ;
-            write_data == '1;
+            write_data[0] == '1;
         })
             $fatal(1, "READ with nonzero write_data was rejected");
         log_transaction("FORCED_READ", tr);
-        if (tr.direction !== FPT_AHB_READ || tr.write_data !== '1)
+        if (tr.direction !== FPT_AHB_READ || tr.write_data.size() != 1 ||
+            tr.write_data[0] !== '1)
             $fatal(1, "READ request mismatch");
-        if (tr.read_data !== 'x || tr.response !== FPT_AHB_OKAY)
+        if (tr.read_data.size() != 1 || tr.read_data[0] !== 'x ||
+            tr.response !== FPT_AHB_OKAY)
             $fatal(1, "READ randomization changed result fields");
         if (!tr.randomize() with { direction == FPT_AHB_WRITE; })
             $fatal(1, "WRITE was rejected");
         log_transaction("FORCED_WRITE", tr);
         if (tr.direction !== FPT_AHB_WRITE)
             $fatal(1, "WRITE request mismatch");
-        if (tr.read_data !== 'x || tr.response !== FPT_AHB_OKAY)
+        if (tr.write_data.size() != 1 || tr.read_data.size() != 1 ||
+            tr.read_data[0] !== 'x || tr.response !== FPT_AHB_OKAY)
             $fatal(1, "WRITE randomization changed result fields");
 
         // VCS CNST-CIF diagnostics are expected for these deliberate conflicts.
@@ -252,20 +477,16 @@ module fpt_ahb_master_transaction_smoke_top;
             $fatal(1, "Misaligned address was accepted");
 
         $display("EXPECT REJECTION: unsupported size");
-        tr.size = fpt_ahb_size_e'(3'b000);
-        if (tr.randomize())
+        if (tr.randomize() with { size != FPT_AHB_WORD; })
             $fatal(1, "Unsupported size was accepted");
-        if (tr.size !== fpt_ahb_size_e'(3'b000))
-            $fatal(1, "Randomization repaired non-random size");
-        tr.size = FPT_AHB_WORD;
+        if (tr.size !== FPT_AHB_WORD)
+            $fatal(1, "Failed size randomization changed the legal value");
 
         $display("EXPECT REJECTION: unsupported burst");
-        tr.burst = fpt_ahb_burst_e'(3'b001);
-        if (tr.randomize())
+        if (tr.randomize() with { burst != FPT_AHB_SINGLE; })
             $fatal(1, "Unsupported burst was accepted");
-        if (tr.burst !== fpt_ahb_burst_e'(3'b001))
-            $fatal(1, "Randomization repaired non-random burst");
-        tr.burst = FPT_AHB_SINGLE;
+        if (tr.burst !== FPT_AHB_SINGLE)
+            $fatal(1, "Failed burst randomization changed the legal value");
 
         if (!tr.randomize())
             $fatal(1, "Randomization failed after restoring legal state");
@@ -273,6 +494,9 @@ module fpt_ahb_master_transaction_smoke_top;
 
         check_utilities();
         check_copy_clone();
+        check_full_burst_enum();
+        check_full_trans_enum();
+        check_burst_length_policy();
         $display("PASS: master transaction smoke test (100 random items: READ=%0d WRITE=%0d; forced READ/WRITE; 3 expected rejections)",
                  read_count, write_count);
         $finish;

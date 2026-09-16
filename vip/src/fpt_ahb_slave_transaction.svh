@@ -13,10 +13,13 @@ class fpt_ahb_slave_transaction extends uvm_sequence_item;
     fpt_ahb_size_e size = FPT_AHB_WORD;
     fpt_ahb_burst_e burst = FPT_AHB_SINGLE;
 
-    // Generated controls, not observed results. READ data is unused for WRITE.
+    // Response-plan fields remain randomizable for custom Slave sequences.
+    // Memory-backed READ data is derived by the Driver from Common Memory;
+    // monitor-created items hold the response actually observed on the bus.
     rand bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data;
     rand fpt_ahb_response_e response;
-    // Concrete response latency resolved by the active Slave response sequence.
+    // A response plan stores intended latency; a monitor item stores the actual
+    // number of HREADY-low data-phase cycles observed before completion.
     rand int unsigned wait_cycles;
 
     constraint c_response_defaults {
@@ -59,7 +62,7 @@ function void fpt_ahb_slave_transaction::do_print(uvm_printer printer);
         printer.print_string("burst", burst.name());
     else
         printer.print_field("burst", burst, $bits(burst), UVM_BIN);
-    // Stored response controls, not evidence of a completed bus transfer.
+    // Stored response-plan or observed values, depending on the producing path.
     printer.print_field("read_data", read_data, $bits(read_data), UVM_HEX);
     if (response.name() != "")
         printer.print_string("response", response.name());
@@ -107,7 +110,7 @@ function bit fpt_ahb_slave_transaction::do_compare(uvm_object rhs, uvm_comparer 
     if (direction == FPT_AHB_WRITE && rhs_tr.direction == FPT_AHB_WRITE)
         same &= comparer.compare_field("write_data", write_data, rhs_tr.write_data,
                                        $bits(write_data), UVM_HEX);
-    // Read data matters only for two successful READ response plans.
+    // Read data matters only for two successful READ items.
     if (direction == FPT_AHB_READ && rhs_tr.direction == FPT_AHB_READ &&
         response == FPT_AHB_OKAY && rhs_tr.response == FPT_AHB_OKAY)
         same &= comparer.compare_field("read_data", read_data, rhs_tr.read_data,
