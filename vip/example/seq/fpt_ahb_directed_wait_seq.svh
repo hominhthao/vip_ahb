@@ -23,7 +23,8 @@ task fpt_ahb_directed_wait_master_seq::body();
     start_item(req);
     req.addr = 'h100;
     req.direction = direction;
-    req.write_data = 'hA5A5_5A5A;
+    req.write_data = new[1];
+    req.write_data[0] = 'hA5A5_5A5A;
     finish_item(req);
     get_response(req);
 endtask
