@@ -3,12 +3,15 @@
 
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 
 
 def main():
     project_root = Path(__file__).resolve().parent.parent
     build_dir = project_root / "work" / "package_compile"
+    if build_dir.exists():
+        shutil.rmtree(build_dir, ignore_errors=True)
     build_dir.mkdir(parents=True, exist_ok=True)
 
     top_file = build_dir / "fpt_ahb_compile_top.sv"

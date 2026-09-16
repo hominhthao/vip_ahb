@@ -15,7 +15,9 @@ def parse_args(argv=None):
     parser.add_argument("--seed", type=int, default=1)                                                                                                                           
     parser.add_argument("--wave", action="store_true", default=True)                                                                                                             
     parser.add_argument("--no-wave", action="store_false", dest="wave")                                                                                                          
-    return parser.parse_args(argv)                                                                                                                                               
+    args, extra = parser.parse_known_args(argv)
+    args.extra_args = extra
+    return args                                                                                                                                               
                                                                                                                                                                                      
                                                                                                                                                                                      
 def run_stage(stage, command, build_dir, environment):                                                                                                                           
@@ -37,11 +39,11 @@ def main(argv=None):
     args = parse_args(argv)                                                                                                                                                      
     project_root = Path(__file__).resolve().parent.parent                                                                                                                        
     build_dir = project_root / "work" / "vip_run" / args.test                                                                                                                    
-    build_dir.mkdir(parents=True, exist_ok=True)                                                                                                                                 
-                                                                                                                                                                                     
-    environment = os.environ.copy()                                                                                                                                              
-                                                                                                                                                                                                                                                                                              
-    subprocess.run(["rm", "-rf", "csrc", "simv", "simv.daidir"], cwd=build_dir, check=False)                                                                                     
+    if build_dir.exists():
+        shutil.rmtree(build_dir, ignore_errors=True)
+    build_dir.mkdir(parents=True, exist_ok=True)
+
+    environment = os.environ.copy()                                                                                     
                                                                                                                                                                                      
     compile_command = [                                                                                                                                                          
         "vcs", "-full64", "-sverilog", "-timescale=1ns/1ps",                                                                                                                     
@@ -70,6 +72,8 @@ def main(argv=None):
         f"+ntb_random_seed={args.seed}", "+UVM_NO_RELNOTES",
         "-no_save", "-cm", "assert", "-l", "run.log",
     ]
+    if hasattr(args, "extra_args") and args.extra_args:
+        run_command.extend(args.extra_args)
   
     print(f"Project root: {project_root}", flush=True)
     print(f"Build directory: {build_dir}", flush=True)

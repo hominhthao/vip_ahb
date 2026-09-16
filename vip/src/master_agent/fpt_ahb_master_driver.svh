@@ -53,12 +53,21 @@ task fpt_ahb_master_driver::address_phase_thread();
         seq_item_port.try_next_item(req);
 
         if (req != null) begin
+            // Chèn IDLE (WAIT cycles) nếu có yêu cầu từ cấu hình
+            if (req.master_delay > 0) begin
+                repeat (req.master_delay) begin
+                    cfg.vif.cb_master.htrans <= 2'b00; // IDLE
+                    @(cfg.vif.cb_master);
+                    while (cfg.vif.cb_master.hready === 1'b0) @(cfg.vif.cb_master);
+                end
+            end
+            
             cfg.vif.cb_master.haddr  <= req.addr;
             cfg.vif.cb_master.hwrite <= (req.direction == FPT_AHB_WRITE) ? 1'b1 : 1'b0;
             cfg.vif.cb_master.hsize  <= req.size;
             cfg.vif.cb_master.hburst <= req.burst;
             cfg.vif.cb_master.hprot  <= 4'b0011;
-            cfg.vif.cb_master.htrans <= 2'b10;
+            cfg.vif.cb_master.htrans <= 2'b10; // NONSEQ
 
             pipeline_q.push_back(req);
             seq_item_port.item_done();
@@ -73,14 +82,20 @@ task fpt_ahb_master_driver::data_phase_thread();
     int timeout_cnt;
 
     forever begin
-        wait (pipeline_q.size() > 0);
-        current_tx = pipeline_q.pop_front();
-        timeout_cnt = 0;
+        if (pipeline_q.size() == 0) begin
+            wait (pipeline_q.size() > 0);
+            current_tx = pipeline_q.pop_front();
+            // Lấy được gói hàng ở ngay Address Phase, phải đợi 1 nhịp clock để vào Data Phase
+            @(cfg.vif.cb_master);
+            while (cfg.vif.cb_master.hready === 1'b0) @(cfg.vif.cb_master);
+        end else begin
+            // Hàng đợi đã có sẵn gói tiếp theo (Pipelined).
+            // Nghĩa là Data Phase trước đó vừa xong, và ta ĐANG Ở NGAY TRONG Data Phase của gói này!
+            // Không được delay thêm nhịp clock nào nữa!
+            current_tx = pipeline_q.pop_front();
+        end
 
-        // BẮT BUỘC: Phải đợi 1 chu kỳ để Pha Địa Chỉ kết thúc trên Bus,
-        // vì Address mới chỉ được chích lên ở ngay delta cycle hiện tại!
-        @(cfg.vif.cb_master);
-        while (cfg.vif.cb_master.hready === 1'b0) @(cfg.vif.cb_master);
+        timeout_cnt = 0;
 
         // --- Bắt đầu Data Phase ---
         if (current_tx.direction == FPT_AHB_WRITE) begin

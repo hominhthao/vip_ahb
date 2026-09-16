@@ -1,3 +1,6 @@
+`ifndef FPT_AHB_PACKAGE_SV
+`define FPT_AHB_PACKAGE_SV
+
 `include "fpt_ahb_macros.svh"
 `include "uvm_macros.svh"
 
@@ -43,10 +46,12 @@ package fpt_ahb_package;
     `include "slave_agent/fpt_ahb_slave_driver.svh"
     `include "slave_agent/fpt_ahb_slave_monitor.svh"
     `include "slave_agent/fpt_ahb_slave_agent.svh"
+    `include "fpt_ahb_predictor.svh"
 
     `include "sequence_lib/fpt_ahb_master_base_seq.svh"
     `include "sequence_lib/fpt_ahb_slave_base_seq.svh"
     `include "sequence_lib/fpt_ahb_slave_mem_seq.svh"
-    `include "sequence_lib/fpt_ahb_slave_wait_mem_seq.svh"
 
 endpackage : fpt_ahb_package
+
+`endif // FPT_AHB_PACKAGE_SV

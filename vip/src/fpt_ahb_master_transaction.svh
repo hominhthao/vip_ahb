@@ -8,9 +8,10 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
 
     rand bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr;
 
-    // Used only for WRITE; READ does not constrain this unused payload.
     rand bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data;
     rand fpt_ahb_direction_e direction;
+    
+    rand int unsigned master_delay;
 
     fpt_ahb_size_e size = FPT_AHB_WORD;
     fpt_ahb_burst_e burst = FPT_AHB_SINGLE;

@@ -14,7 +14,7 @@ class fpt_ahb_base_test extends uvm_test;
     extern virtual function void build_phase(uvm_phase phase);
     extern virtual function void end_of_elaboration_phase(uvm_phase phase);
     // Test completion budget in clocks; not a Slave wait-state policy.
-    int unsigned completion_timeout_cycles = 100;
+    int unsigned completion_timeout_cycles = 50000;
     extern task run_sequence_and_wait(uvm_sequence_base seq, int expected_count);
 endclass
 
@@ -40,6 +40,16 @@ function void fpt_ahb_base_test::build_phase(uvm_phase phase);
     env_cfg = fpt_ahb_env_cfg::type_id::create("env_cfg");
     env_cfg.num_masters = 1;
     env_cfg.num_slaves = 1;
+
+    // Phẫu thuật 1: Cho phép truyền cấu hình Performance (Delay) từ Command Line
+    if ($test$plusargs("PERF_MODE=LOW")) begin
+        env_cfg.perf_mode = FPT_AHB_PERF_LOW;
+        `uvm_info("CFG", "Running in PERF_MODE=LOW (Random Slave Delay enabled)", UVM_LOW)
+    end else begin
+        env_cfg.perf_mode = FPT_AHB_PERF_HIGH;
+        `uvm_info("CFG", "Running in PERF_MODE=HIGH (Zero Slave Delay)", UVM_LOW)
+    end
+
     env_cfg.create_agent_cfgs();
 
     master_cfg = env_cfg.master_cfgs[0];
@@ -51,7 +61,7 @@ function void fpt_ahb_base_test::build_phase(uvm_phase phase);
 
     // Preserve the existing default Slave response sequence and component path.
     uvm_config_db#(uvm_object_wrapper)::set(this,
-                                            "env.slave_agent.sequencer.run_phase",
+                                            "env.slave_agents[0].sequencer.run_phase",
                                             "default_sequence",
                                             fpt_ahb_slave_mem_seq::type_id::get());
 
@@ -74,11 +84,11 @@ task fpt_ahb_base_test::run_sequence_and_wait(uvm_sequence_base seq, int expecte
 
     if (expected_count <= 0)
         `uvm_fatal("FPT_AHB_TEST_COUNT", "Integration tests require a positive expected count")
-    env.scoreboard.expected_count = expected_count;
+    env.system_checker.expected_count = expected_count;
     fork
         begin
-            seq.start(env.master_agent.sequencer);
-            wait (env.scoreboard.checked_count >= expected_count);
+            seq.start(env.master_agents[0].sequencer);
+            wait (env.system_checker.checked_count >= expected_count);
             completed = 1'b1;
         end
         begin
@@ -91,7 +101,7 @@ task fpt_ahb_base_test::run_sequence_and_wait(uvm_sequence_base seq, int expecte
         `uvm_error("FPT_AHB_TEST_TIMEOUT",
                    $sformatf("Completion timeout after %0d clocks: expected=%0d checked=%0d",
                              completion_timeout_cycles, expected_count,
-                             env.scoreboard.checked_count))
+                             env.system_checker.checked_count))
 endtask : run_sequence_and_wait
 
 `endif // FPT_AHB_BASE_TEST_SVH

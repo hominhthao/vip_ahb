@@ -3,11 +3,14 @@
 
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 
 
 def run_smoke(project_root, role):
     build_dir = project_root / "work" / f"{role}_transaction_smoke"
+    if build_dir.exists():
+        shutil.rmtree(build_dir, ignore_errors=True)
     build_dir.mkdir(parents=True, exist_ok=True)
     top = f"fpt_ahb_{role}_transaction_smoke_top"
     compile_command = [

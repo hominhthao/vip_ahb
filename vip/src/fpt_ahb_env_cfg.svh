@@ -1,11 +1,14 @@
 `ifndef FPT_AHB_ENV_CFG_SVH
 `define FPT_AHB_ENV_CFG_SVH
 
+typedef enum { FPT_AHB_PERF_HIGH, FPT_AHB_PERF_LOW } fpt_ahb_perf_mode_e;
+
 class fpt_ahb_env_cfg extends uvm_object;
     `uvm_object_utils(fpt_ahb_env_cfg)
 
     int unsigned num_masters = 1;
     int unsigned num_slaves  = 1;
+    fpt_ahb_perf_mode_e perf_mode = FPT_AHB_PERF_HIGH;
 
     fpt_ahb_master_agent_cfg master_cfgs[];
     fpt_ahb_slave_agent_cfg  slave_cfgs[];
@@ -13,6 +16,7 @@ class fpt_ahb_env_cfg extends uvm_object;
 
     // This policy becomes active when the Scoreboard evolves into System Checker.
     bit has_system_checker = 1;
+    bit has_predictor = 1;
 
     extern function new(string name = "fpt_ahb_env_cfg");
     extern function void create_agent_cfgs();
@@ -37,10 +41,27 @@ function void fpt_ahb_env_cfg::create_agent_cfgs();
     foreach (master_cfgs[i]) begin
         master_cfgs[i] = fpt_ahb_master_agent_cfg::type_id::create(
             $sformatf("master_cfg_%0d", i));
+        
+        if (perf_mode == FPT_AHB_PERF_HIGH) begin
+            master_cfgs[i].wait_mode = FPT_AHB_ZERO_WAIT;
+        end else begin
+            master_cfgs[i].wait_mode = FPT_AHB_RANDOM_WAIT;
+            master_cfgs[i].min_delay = 1;
+            master_cfgs[i].max_delay = 5;
+        end
     end
     foreach (slave_cfgs[i]) begin
         slave_cfgs[i] = fpt_ahb_slave_agent_cfg::type_id::create(
             $sformatf("slave_cfg_%0d", i));
+        
+        // Cấu hình Performance Option
+        if (perf_mode == FPT_AHB_PERF_HIGH) begin
+            slave_cfgs[i].wait_mode = FPT_AHB_ZERO_WAIT; // Không delay
+        end else begin
+            slave_cfgs[i].wait_mode = FPT_AHB_RANDOM_WAIT;
+            slave_cfgs[i].min_wait_cycles = 1;
+            slave_cfgs[i].max_wait_cycles = 5; // Delay ngẫu nhiên từ 1 đến 5 clock
+        end
     end
 endfunction : create_agent_cfgs
 
@@ -78,6 +99,9 @@ function bit fpt_ahb_env_cfg::validate();
         if (master_cfgs[i].vif == null) begin
             `uvm_fatal("FPT_AHB_ENV_CFG_VIF",
                        $sformatf("master_cfgs[%0d].vif is null", i))
+            return 0;
+        end
+        if (!master_cfgs[i].validate()) begin
             return 0;
         end
     end

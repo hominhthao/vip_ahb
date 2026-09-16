@@ -3,12 +3,15 @@
 
 from pathlib import Path
 import shlex
+import shutil
 import subprocess
 
 
 def main():
     project_root = Path(__file__).resolve().parent.parent
     build_dir = project_root / "work" / "scoreboard_smoke"
+    if build_dir.exists():
+        shutil.rmtree(build_dir, ignore_errors=True)
     build_dir.mkdir(parents=True, exist_ok=True)
     top = "fpt_ahb_scoreboard_smoke_top"
     compile_command = [
