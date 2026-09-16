@@ -58,6 +58,7 @@ endfunction : resolve_wait_cycles
 
 task fpt_ahb_slave_mem_seq::body();
     fpt_ahb_slave_transaction req;
+    bit randomize_ok;
 
     if (!uvm_config_db#(fpt_ahb_slave_agent_cfg)::get(m_sequencer, "", "cfg", cfg) ||
         cfg == null) begin
@@ -79,7 +80,15 @@ task fpt_ahb_slave_mem_seq::body();
         start_item(req);
         req.c_v0_0_context.constraint_mode(1); // Bật constraint lại vì req đã có addr chuẩn
 
-        if (!req.randomize()) begin
+        // This sequence owns response selection, but Common Memory/Driver owns
+        // READ data and the configured WAIT policy owns response latency.
+        req.wait_cycles = 0;
+        req.read_data.rand_mode(0);
+        req.wait_cycles.rand_mode(0);
+        randomize_ok = req.randomize();
+        req.read_data.rand_mode(1);
+        req.wait_cycles.rand_mode(1);
+        if (!randomize_ok) begin
             `uvm_error("SEQ_RAND", "Randomization failed")
         end
         if (!resolve_wait_cycles(req)) begin

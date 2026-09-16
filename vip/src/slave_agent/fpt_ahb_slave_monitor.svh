@@ -52,17 +52,21 @@ task fpt_ahb_slave_monitor::collect_transactions();
     forever begin
         @(cfg.vif.cb_monitor);
 
-        if (cfg.vif.cb_monitor.hready === 1'b1 && data_phase_tx != null) begin
-            if (data_phase_tx.direction == FPT_AHB_WRITE) begin
-                data_phase_tx.write_data = cfg.vif.cb_monitor.hwdata;
-            end else begin
-                data_phase_tx.read_data = cfg.vif.cb_monitor.hrdata;
+        if (data_phase_tx != null) begin
+            if (cfg.vif.cb_monitor.hready === 1'b0) begin
+                data_phase_tx.wait_cycles++;
+            end else if (cfg.vif.cb_monitor.hready === 1'b1) begin
+                if (data_phase_tx.direction == FPT_AHB_WRITE) begin
+                    data_phase_tx.write_data = cfg.vif.cb_monitor.hwdata;
+                end else begin
+                    data_phase_tx.read_data = cfg.vif.cb_monitor.hrdata;
+                end
+
+                data_phase_tx.response = (cfg.vif.cb_monitor.hresp == 1'b1) ? FPT_AHB_ERROR : FPT_AHB_OKAY;
+
+                ap.write(data_phase_tx);
+                data_phase_tx = null;
             end
-
-            data_phase_tx.response = (cfg.vif.cb_monitor.hresp == 1'b1) ? FPT_AHB_ERROR : FPT_AHB_OKAY;
-
-            ap.write(data_phase_tx);
-            data_phase_tx = null;
         end
 
         if (cfg.vif.cb_monitor.hready === 1'b1 &&
@@ -75,6 +79,7 @@ task fpt_ahb_slave_monitor::collect_transactions();
             addr_phase_tx.direction = (cfg.vif.cb_monitor.hwrite == 1'b1) ? FPT_AHB_WRITE : FPT_AHB_READ;
             $cast(addr_phase_tx.size, cfg.vif.cb_monitor.hsize);
             $cast(addr_phase_tx.burst, cfg.vif.cb_monitor.hburst);
+            addr_phase_tx.wait_cycles = 0;
 
             data_phase_tx = addr_phase_tx;
         end
