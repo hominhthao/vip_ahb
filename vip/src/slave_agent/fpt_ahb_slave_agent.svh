@@ -10,7 +10,7 @@ class fpt_ahb_slave_agent extends uvm_agent;
 
     fpt_ahb_slave_agent_cfg cfg;
     fpt_ahb_common_memory mem;
-    uvm_analysis_port #(fpt_ahb_slave_transaction) ap;
+    uvm_analysis_port #(fpt_ahb_beat_transaction) ap;
 
     extern function new(string name = "fpt_ahb_slave_agent", uvm_component parent = null);
     extern virtual function void build_phase(uvm_phase phase);

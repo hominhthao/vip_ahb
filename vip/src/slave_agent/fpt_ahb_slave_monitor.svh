@@ -5,7 +5,7 @@ class fpt_ahb_slave_monitor extends uvm_monitor;
     `uvm_component_utils(fpt_ahb_slave_monitor)
 
     fpt_ahb_slave_agent_cfg cfg;
-    uvm_analysis_port #(fpt_ahb_slave_transaction) ap;
+    uvm_analysis_port #(fpt_ahb_beat_transaction) ap;
 
     extern function new(string name = "fpt_ahb_slave_monitor", uvm_component parent = null);
     extern virtual function void build_phase(uvm_phase phase);
@@ -46,11 +46,16 @@ endtask
 // Collect Transactions: Observes the AHB bus pipelined phases and builds transactions
 //------------------------------------------------------------------------------
 task fpt_ahb_slave_monitor::collect_transactions();
-    fpt_ahb_slave_transaction data_phase_tx;
-    fpt_ahb_slave_transaction addr_phase_tx;
+    fpt_ahb_beat_transaction data_phase_tx;
+    fpt_ahb_beat_transaction addr_phase_tx;
 
     forever begin
         @(cfg.vif.cb_monitor);
+
+        if (cfg.vif.hresetn !== 1'b1) begin
+            data_phase_tx = null;
+            continue;
+        end
 
         if (data_phase_tx != null) begin
             if (cfg.vif.cb_monitor.hready === 1'b0) begin
@@ -73,7 +78,7 @@ task fpt_ahb_slave_monitor::collect_transactions();
             cfg.vif.cb_monitor.hselx === 1'b1 &&
             (cfg.vif.cb_monitor.htrans == 2'b10 || cfg.vif.cb_monitor.htrans == 2'b11)) begin
 
-            addr_phase_tx = fpt_ahb_slave_transaction::type_id::create("addr_phase_tx");
+            addr_phase_tx = fpt_ahb_beat_transaction::type_id::create("addr_phase_tx");
 
             addr_phase_tx.addr      = cfg.vif.cb_monitor.haddr;
             addr_phase_tx.direction = (cfg.vif.cb_monitor.hwrite == 1'b1) ? FPT_AHB_WRITE : FPT_AHB_READ;

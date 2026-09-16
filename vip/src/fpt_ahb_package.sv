@@ -32,6 +32,7 @@ package fpt_ahb_package;
     `include "fpt_ahb_common_memory.svh"
     `include "fpt_ahb_master_transaction.svh"
     `include "fpt_ahb_slave_transaction.svh"
+    `include "fpt_ahb_beat_transaction.svh"
 
     `include "master_agent/fpt_ahb_master_agent_cfg.svh"
     `include "master_agent/fpt_ahb_master_driver.svh"
