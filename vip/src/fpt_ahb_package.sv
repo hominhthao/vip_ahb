@@ -15,8 +15,22 @@ package fpt_ahb_package;
     } fpt_ahb_size_e;
 
     typedef enum logic [2:0] {
-        FPT_AHB_SINGLE = 3'b000
+        FPT_AHB_SINGLE = 3'b000,
+        FPT_AHB_INCR   = 3'b001,
+        FPT_AHB_WRAP4  = 3'b010,
+        FPT_AHB_INCR4  = 3'b011,
+        FPT_AHB_WRAP8  = 3'b100,
+        FPT_AHB_INCR8  = 3'b101,
+        FPT_AHB_WRAP16 = 3'b110,
+        FPT_AHB_INCR16 = 3'b111
     } fpt_ahb_burst_e;
+
+    typedef enum logic [1:0] {
+        FPT_AHB_IDLE   = 2'b00,
+        FPT_AHB_BUSY   = 2'b01,
+        FPT_AHB_NONSEQ = 2'b10,
+        FPT_AHB_SEQ    = 2'b11
+    } fpt_ahb_trans_e;
 
     typedef enum logic {
         FPT_AHB_OKAY  = 1'b0,
@@ -32,6 +46,7 @@ package fpt_ahb_package;
     `include "fpt_ahb_common_memory.svh"
     `include "fpt_ahb_master_transaction.svh"
     `include "fpt_ahb_slave_transaction.svh"
+    `include "fpt_ahb_beat_transaction.svh"
 
     `include "master_agent/fpt_ahb_master_agent_cfg.svh"
     `include "master_agent/fpt_ahb_master_driver.svh"

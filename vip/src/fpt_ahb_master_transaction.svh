@@ -16,6 +16,8 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
 
     rand fpt_ahb_size_e size = FPT_AHB_WORD;
     rand fpt_ahb_burst_e burst = FPT_AHB_SINGLE;
+    // Requested active beats; INCR length is selected by the sequence/user.
+    rand int unsigned num_beats = 1;
 
     // One runtime-derived result per completed READ beat; never randomized.
     logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data[];
@@ -25,9 +27,33 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
         addr[1:0] == 2'b00;
     }
 
+    // One source of truth for request length, independent of bus execution.
+    constraint c_burst_length {
+        num_beats > 0;
+        if (burst == FPT_AHB_SINGLE)
+            num_beats == 1;
+        else if (burst inside {FPT_AHB_WRAP4, FPT_AHB_INCR4})
+            num_beats == 4;
+        else if (burst inside {FPT_AHB_WRAP8, FPT_AHB_INCR8})
+            num_beats == 8;
+        else if (burst inside {FPT_AHB_WRAP16, FPT_AHB_INCR16})
+            num_beats == 16;
+
+        // HSIZE encodes log2(bytes/beat). Incrementing bursts cannot leave
+        // the 1 KB region containing their start address.
+        if (burst inside {FPT_AHB_INCR, FPT_AHB_INCR4,
+                          FPT_AHB_INCR8, FPT_AHB_INCR16})
+            num_beats <= (1024 - int'(addr[9:0])) / (1 << int'(size));
+    }
+
+    // Preserve the existing one-payload-element-per-requested-beat shape,
+    // including unused WRITE storage on READ requests.
+    constraint c_payload_size {
+        write_data.size() == num_beats;
+    }
+
     // Declarative constraints preserve the currently verified WORD/SINGLE scope.
     constraint c_v0_0_transfer {
-        write_data.size() == 1;
         size == FPT_AHB_WORD;
         burst == FPT_AHB_SINGLE;
     }
@@ -57,6 +83,7 @@ function void fpt_ahb_master_transaction::do_copy(uvm_object rhs);
     write_data = rhs_tr.write_data;
     size = rhs_tr.size;
     burst = rhs_tr.burst;
+    num_beats = rhs_tr.num_beats;
     read_data = rhs_tr.read_data;
     response = rhs_tr.response;
 endfunction : do_copy
@@ -71,6 +98,7 @@ function void fpt_ahb_master_transaction::do_print(uvm_printer printer);
     printer.print_string("direction", direction.name());
     printer.print_string("size", size.name());
     printer.print_string("burst", burst.name());
+    printer.print_field("num_beats", num_beats, $bits(num_beats), UVM_DEC);
     printer.print_field("read_data_count", read_data.size(), 32, UVM_DEC);
     foreach (read_data[i])
         printer.print_field($sformatf("read_data[%0d]", i), read_data[i],
@@ -96,6 +124,8 @@ function bit fpt_ahb_master_transaction::do_compare(uvm_object rhs, uvm_comparer
     same &= comparer.compare_field("addr", addr, rhs_tr.addr, $bits(addr), UVM_HEX);
     same &= comparer.compare_field("size", size, rhs_tr.size, $bits(size));
     same &= comparer.compare_field("burst", burst, rhs_tr.burst, $bits(burst));
+    same &= comparer.compare_field("num_beats", num_beats, rhs_tr.num_beats,
+                                   $bits(num_beats), UVM_DEC);
     if (direction == FPT_AHB_WRITE && rhs_tr.direction == FPT_AHB_WRITE) begin
         same &= comparer.compare_field("write_data.size", write_data.size(),
                                        rhs_tr.write_data.size(), 32, UVM_DEC);

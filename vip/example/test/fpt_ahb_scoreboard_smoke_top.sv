@@ -28,19 +28,19 @@ module fpt_ahb_scoreboard_smoke_top;
     extern virtual function void build_phase(uvm_phase phase);
     extern virtual task run_phase(uvm_phase phase);
     extern task submit_pair(
-                            fpt_ahb_master_transaction master_tx,
-                            fpt_ahb_slave_transaction slave_tx,
+                            fpt_ahb_beat_transaction master_tx,
+                            fpt_ahb_beat_transaction slave_tx,
                             input bit expect_match,
                             input string label
                             );
-    extern function fpt_ahb_master_transaction make_master(
+    extern function fpt_ahb_beat_transaction make_master(
                                                            input bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0]   addr,
                                                            input                                     fpt_ahb_direction_e direction,
                                                            input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0]   write_data,
                                                            input logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data,
                                                            input                                     fpt_ahb_response_e response
                                                            );
-    extern function fpt_ahb_slave_transaction make_slave(
+    extern function fpt_ahb_beat_transaction make_slave(
                                                          input bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr,
                                                          input                                   fpt_ahb_direction_e direction,
                                                          input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data,
@@ -63,50 +63,52 @@ endclass
         uvm_report_cb::add(scoreboard, error_catcher);
     endfunction : build_phase
 
-    function fpt_ahb_master_transaction fpt_ahb_scoreboard_smoke_test::make_master(
+    function fpt_ahb_beat_transaction fpt_ahb_scoreboard_smoke_test::make_master(
                                                                                    input bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0]   addr,
                                                                                    input                                     fpt_ahb_direction_e direction,
                                                                                    input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0]   write_data,
                                                                                    input logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data,
                                                                                    input                                     fpt_ahb_response_e response
                                                                                    );
-        fpt_ahb_master_transaction tx;
+        fpt_ahb_beat_transaction tx;
 
-        tx = fpt_ahb_master_transaction::type_id::create("master_observation");
+        tx = fpt_ahb_beat_transaction::type_id::create("master_observation");
         tx.addr = addr;
         tx.direction = direction;
-        tx.write_data = new[1];
-        tx.write_data[0] = write_data;
-        if (direction == FPT_AHB_READ) begin
-            tx.read_data = new[1];
-            tx.read_data[0] = read_data;
-        end
+        tx.write_data = write_data;
+        tx.read_data = read_data;
+        tx.size = FPT_AHB_WORD;
+        tx.burst = FPT_AHB_SINGLE;
+        tx.trans = FPT_AHB_NONSEQ;
         tx.response = response;
         return tx;
     endfunction : make_master
 
-    function fpt_ahb_slave_transaction fpt_ahb_scoreboard_smoke_test::make_slave(
+    function fpt_ahb_beat_transaction fpt_ahb_scoreboard_smoke_test::make_slave(
                                                                                  input bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr,
                                                                                  input                                   fpt_ahb_direction_e direction,
                                                                                  input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data,
                                                                                  input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data,
                                                                                  input                                   fpt_ahb_response_e response
                                                                                  );
-        fpt_ahb_slave_transaction tx;
+        fpt_ahb_beat_transaction tx;
 
-        tx = fpt_ahb_slave_transaction::type_id::create("slave_observation");
+        tx = fpt_ahb_beat_transaction::type_id::create("slave_observation");
         tx.addr = addr;
         tx.direction = direction;
         tx.write_data = write_data;
         tx.read_data = read_data;
+        tx.size = FPT_AHB_WORD;
+        tx.burst = FPT_AHB_SINGLE;
+        tx.trans = FPT_AHB_NONSEQ;
         tx.response = response;
         tx.wait_cycles = 0;
         return tx;
     endfunction : make_slave
 
     task fpt_ahb_scoreboard_smoke_test::submit_pair(
-                                                    fpt_ahb_master_transaction master_tx,
-                                                    fpt_ahb_slave_transaction slave_tx,
+                                                    fpt_ahb_beat_transaction master_tx,
+                                                    fpt_ahb_beat_transaction slave_tx,
                                                     input bit expect_match,
                                                     input string label
                                                     );
@@ -127,8 +129,8 @@ endclass
     endtask : submit_pair
 
     task fpt_ahb_scoreboard_smoke_test::run_phase(uvm_phase phase);
-        fpt_ahb_master_transaction master_tx;
-        fpt_ahb_slave_transaction slave_tx;
+        fpt_ahb_beat_transaction master_tx;
+        fpt_ahb_beat_transaction slave_tx;
         fpt_ahb_common_memory common_memory;
 
         phase.raise_objection(this);

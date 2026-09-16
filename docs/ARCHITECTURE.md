@@ -187,9 +187,12 @@ but runtime behavior must remain legal:
 - BUSY and IDLE do not consume completed beats;
 - low `HREADY` does not advance beat or address state.
 
-Undefined-length INCR uses a finite `num_beats` policy, with a planned default
-constraint of 2 through 16 beats. WORD-only burst progression must enforce
-alignment, wrapping rules, and the AHB 1 KB boundary.
+Undefined-length INCR uses a finite, positive `num_beats`. Transaction-level
+capability is bounded by the legal number of beats remaining before the AHB
+1 KB boundary; there is no arbitrary architectural maximum of 16 beats.
+Individual sequences or tests may constrain a smaller range, such as 2 through
+16 beats, for a specific verification scenario. WORD-only burst progression
+must enforce alignment, wrapping rules, and the AHB 1 KB boundary.
 
 A shared generation helper may calculate burst addresses. Checker expected
 progression must remain independently verifiable to avoid a common-mode false
