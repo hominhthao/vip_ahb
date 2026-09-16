@@ -188,10 +188,10 @@ module fpt_ahb_master_transaction_smoke_top;
             src.write_data = new[2];
             src.write_data[0] = (i == 0) ? 'h12345678 : 'h87654321;
             src.write_data[1] = (i == 0) ? 'hCAFEBABE : 'h0BADF00D;
-            // Invalid enum state is deliberate: copying is not randomization
-            // and must preserve stored values, not repair them to defaults.
+            // Copying is not randomization: preserve an unsupported size and
+            // a valid non-SINGLE burst without changing the traffic constraint.
             src.size = (i == 0) ? FPT_AHB_WORD : fpt_ahb_size_e'(3'b000);
-            src.burst = (i == 0) ? FPT_AHB_SINGLE : fpt_ahb_burst_e'(3'b001);
+            src.burst = (i == 0) ? FPT_AHB_SINGLE : FPT_AHB_INCR;
             src.read_data = new[2];
             src.read_data[0] = (i == 0) ? 'hA5A55A5A : 'hxxxxzzzz;
             src.read_data[1] = (i == 0) ? 'h5A5AA5A5 : 'hzzzzxxxx;
@@ -201,7 +201,7 @@ module fpt_ahb_master_transaction_smoke_top;
             dst.write_data = new[1];
             dst.write_data[0] = '0;
             dst.size = (i == 0) ? fpt_ahb_size_e'(3'b000) : FPT_AHB_WORD;
-            dst.burst = (i == 0) ? fpt_ahb_burst_e'(3'b001) : FPT_AHB_SINGLE;
+            dst.burst = (i == 0) ? FPT_AHB_INCR : FPT_AHB_SINGLE;
             dst.read_data = new[1];
             dst.read_data[0] = '0;
             dst.response = (i == 0) ? FPT_AHB_OKAY : FPT_AHB_ERROR;
@@ -221,7 +221,7 @@ module fpt_ahb_master_transaction_smoke_top;
             cloned.write_data[0] = '1;
             cloned.write_data = new[1](cloned.write_data);
             cloned.size = fpt_ahb_size_e'(3'b111);
-            cloned.burst = fpt_ahb_burst_e'(3'b111);
+            cloned.burst = FPT_AHB_INCR16;
             cloned.read_data[0] = '0;
             cloned.read_data = new[1](cloned.read_data);
             cloned.response = dst.response == FPT_AHB_OKAY ? FPT_AHB_ERROR : FPT_AHB_OKAY;
@@ -229,6 +229,70 @@ module fpt_ahb_master_transaction_smoke_top;
             $display("PASS: master clone all fields and independence case %0d", i);
         end
     endtask : check_copy_clone
+
+    task automatic check_full_burst_enum();
+        fpt_ahb_burst_e values[8];
+        string names[8];
+        fpt_ahb_master_transaction master_src;
+        fpt_ahb_master_transaction master_dst;
+        fpt_ahb_slave_transaction slave_src;
+        fpt_ahb_slave_transaction slave_dst;
+        fpt_ahb_beat_transaction beat_src;
+        fpt_ahb_beat_transaction beat_dst;
+
+        values = '{FPT_AHB_SINGLE, FPT_AHB_INCR, FPT_AHB_WRAP4, FPT_AHB_INCR4,
+                   FPT_AHB_WRAP8, FPT_AHB_INCR8, FPT_AHB_WRAP16, FPT_AHB_INCR16};
+        names = '{"FPT_AHB_SINGLE", "FPT_AHB_INCR", "FPT_AHB_WRAP4", "FPT_AHB_INCR4",
+                  "FPT_AHB_WRAP8", "FPT_AHB_INCR8", "FPT_AHB_WRAP16", "FPT_AHB_INCR16"};
+        master_src = fpt_ahb_master_transaction::type_id::create("burst_master_src");
+        master_dst = fpt_ahb_master_transaction::type_id::create("burst_master_dst");
+        slave_src = fpt_ahb_slave_transaction::type_id::create("burst_slave_src");
+        slave_dst = fpt_ahb_slave_transaction::type_id::create("burst_slave_dst");
+        beat_src = fpt_ahb_beat_transaction::type_id::create("burst_beat_src");
+        beat_dst = fpt_ahb_beat_transaction::type_id::create("burst_beat_dst");
+
+        master_src.addr = 'h100;
+        master_src.direction = FPT_AHB_WRITE;
+        master_src.write_data = new[1];
+        master_src.write_data[0] = 'h12345678;
+        slave_src.addr = 'h100;
+        slave_src.direction = FPT_AHB_WRITE;
+        slave_src.write_data = 'h12345678;
+        slave_src.response = FPT_AHB_OKAY;
+        beat_src.addr = 'h100;
+        beat_src.direction = FPT_AHB_WRITE;
+        beat_src.size = FPT_AHB_WORD;
+        beat_src.write_data = 'h12345678;
+        beat_src.response = FPT_AHB_OKAY;
+
+        for (int i = 0; i < 8; i++) begin
+            if (values[i] !== i[2:0] || values[i].name() != names[i])
+                $fatal(1, "HBURST encoding/name mismatch for code %0d", i);
+
+            // Same cast and destination type used by both bus Monitors.
+            if (!$cast(beat_src.burst, i[2:0]) || beat_src.burst !== values[i])
+                $fatal(1, "Beat observation cannot decode HBURST code %0d", i);
+            if (!$cast(slave_src.burst, i[2:0]) || slave_src.burst !== values[i])
+                $fatal(1, "Slave request context cannot decode HBURST code %0d", i);
+            master_src.burst = values[i];
+
+            master_dst.copy(master_src);
+            slave_dst.copy(slave_src);
+            beat_dst.copy(beat_src);
+            if (master_dst.burst !== values[i] || !master_src.compare(master_dst) ||
+                slave_dst.burst !== values[i] || !slave_src.compare(slave_dst) ||
+                beat_dst.burst !== values[i] || !beat_src.compare(beat_dst))
+                $fatal(1, "HBURST copy/compare failed for code %0d", i);
+            expect_text(master_src.sprint(), names[i]);
+            expect_text(slave_src.sprint(), names[i]);
+            expect_text(beat_src.sprint(), names[i]);
+
+            beat_dst.burst = values[(i + 1) % 8];
+            if (beat_src.compare(beat_dst))
+                $fatal(1, "Beat compare ignored HBURST for code %0d", i);
+            $display("PASS: HBURST %03b %s decoded and stored", i[2:0], names[i]);
+        end
+    endtask : check_full_burst_enum
 
     initial begin
         fpt_ahb_master_transaction tr;
@@ -318,6 +382,7 @@ module fpt_ahb_master_transaction_smoke_top;
 
         check_utilities();
         check_copy_clone();
+        check_full_burst_enum();
         $display("PASS: master transaction smoke test (100 random items: READ=%0d WRITE=%0d; forced READ/WRITE; 3 expected rejections)",
                  read_count, write_count);
         $finish;

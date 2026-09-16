@@ -87,13 +87,13 @@ module fpt_ahb_slave_transaction_smoke_top;
         // Unnamed enum state must remain visible without being repaired.
         tr.direction = fpt_ahb_direction_e'(1'bx);
         tr.size = fpt_ahb_size_e'(3'b111);
-        tr.burst = fpt_ahb_burst_e'(3'b111);
+        tr.burst = fpt_ahb_burst_e'(3'bxxx);
         tr.response = fpt_ahb_response_e'(1'bz);
         before_print = snapshot(tr);
         printed = tr.sprint(printer);
         expect_print_field(printed, "direction", "x");
         expect_print_field(printed, "size", "111");
-        expect_print_field(printed, "burst", "111");
+        expect_print_field(printed, "burst", "xxx");
         expect_print_field(printed, "response", "z");
         tr.print(printer);
         if (snapshot(tr) != before_print)
