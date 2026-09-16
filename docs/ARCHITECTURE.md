@@ -66,6 +66,9 @@ The System Environment constructs and connects the configured components. Env
 Config owns environment-level policy rather than scattering hardcoded behavior
 through Agents, tests, or the example DUT.
 
+Direct `fpt_ahb_env` consumers must provide `fpt_ahb_env_cfg`; the Environment
+does not create a compatibility fallback configuration.
+
 Env Config provides or coordinates:
 
 - Master and Slave Agent configurations;

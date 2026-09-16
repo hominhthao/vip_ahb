@@ -27,7 +27,7 @@ interface fpt_ahb_if (input hclk, input hresetn);
     clocking cb_master @(posedge hclk);
         default input #1step output #1step;
         input  hrdata, hready, hresp, hexokay, hreadyout;
-        output haddr, htrans, hwrite, hsize, hburst, hprot, hwdata, hselx, hmastlock, hexcl, hwstrb, hmaster, hnonsec;
+        output haddr, htrans, hwrite, hsize, hburst, hprot, hwdata, hmastlock, hexcl, hwstrb, hmaster, hnonsec;
     endclocking
 
     clocking cb_slave @(posedge hclk);

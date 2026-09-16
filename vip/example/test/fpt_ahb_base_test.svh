@@ -5,6 +5,8 @@ class fpt_ahb_base_test extends uvm_test;
     `uvm_component_utils(fpt_ahb_base_test)
 
     fpt_ahb_env env;
+    fpt_ahb_env_cfg env_cfg;
+    // Compatibility aliases; Env Config owns these Agent Config handles.
     fpt_ahb_master_agent_cfg master_cfg;
     fpt_ahb_slave_agent_cfg  slave_cfg;
 
@@ -27,30 +29,33 @@ endfunction
 // Build Phase: Creates environment, configs and sets up default sequences
 //------------------------------------------------------------------------------
 function void fpt_ahb_base_test::build_phase(uvm_phase phase);
+    virtual fpt_ahb_if vif;
+
     super.build_phase(phase);
 
-    // 1. Khởi tạo mâm cấu hình cho Master
-    master_cfg = fpt_ahb_master_agent_cfg::type_id::create("master_cfg");
-
-    // Hứng sợi cáp quang (vif) từ file Top thả xuống
-    if (!uvm_config_db#(virtual fpt_ahb_if)::get(this, "", "vif", master_cfg.vif)) begin
+    if (!uvm_config_db#(virtual fpt_ahb_if)::get(this, "", "vif", vif)) begin
         `uvm_fatal("NO_VIF", "Virtual interface not found in config_db. Did you set it in Top?")
     end
-    // Ném cục Config xuống cho Master Agent
-    uvm_config_db#(fpt_ahb_master_agent_cfg)::set(this, "env.master_agent*", "cfg", master_cfg);
 
-    // 2. Khởi tạo mâm cấu hình cho Slave
-    slave_cfg = fpt_ahb_slave_agent_cfg::type_id::create("slave_cfg");
-    slave_cfg.vif = master_cfg.vif; // Slave xài chung 1 sợi cáp Bus với Master
-    uvm_config_db#(fpt_ahb_slave_agent_cfg)::set(this, "env.slave_agent*", "cfg", slave_cfg);
+    env_cfg = fpt_ahb_env_cfg::type_id::create("env_cfg");
+    env_cfg.num_masters = 1;
+    env_cfg.num_slaves = 1;
+    env_cfg.create_agent_cfgs();
 
-    // 4. Tuyệt chiêu: Ép Bếp trưởng tự động phục vụ (Chạy tự động Mem Sequence)
+    master_cfg = env_cfg.master_cfgs[0];
+    slave_cfg = env_cfg.slave_cfgs[0];
+    master_cfg.vif = vif;
+    slave_cfg.vif = vif;
+
+    uvm_config_db#(fpt_ahb_env_cfg)::set(this, "env", "cfg", env_cfg);
+
+    // Preserve the existing default Slave response sequence and component path.
     uvm_config_db#(uvm_object_wrapper)::set(this,
                                             "env.slave_agent.sequencer.run_phase",
                                             "default_sequence",
                                             fpt_ahb_slave_mem_seq::type_id::get());
 
-    // 5. Khởi tạo Environment (Chiếc hộp bọc tất cả lại)
+    // Create the Environment only after its configuration is complete.
     env = fpt_ahb_env::type_id::create("env", this);
 endfunction
 

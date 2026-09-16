@@ -14,11 +14,13 @@ package fpt_ahb_example_package;
     `include "seq/fpt_ahb_read_after_write_seq.svh"
     `include "seq/fpt_ahb_single_write_seq.svh"
     `include "seq/fpt_ahb_random_rw_seq.svh"
+    `include "seq/fpt_ahb_directed_wait_seq.svh"
 
     `include "test/fpt_ahb_base_test.svh"
     `include "test/fpt_ahb_read_after_write_test.svh"
     `include "test/fpt_ahb_single_write_test.svh"
     `include "test/fpt_ahb_random_rw_test.svh"
+    `include "test/fpt_ahb_directed_wait_test.svh"
 
 endpackage : fpt_ahb_example_package
 

@@ -5,39 +5,33 @@ class fpt_ahb_slave_wait_mem_seq extends fpt_ahb_slave_mem_seq;
     `uvm_object_utils(fpt_ahb_slave_wait_mem_seq)
 
     extern function new(string name = "fpt_ahb_slave_wait_mem_seq");
-    extern virtual task body();
+    extern virtual function bit resolve_wait_cycles(
+        fpt_ahb_slave_transaction req
+    );
 endclass
 
 function fpt_ahb_slave_wait_mem_seq::new(string name = "fpt_ahb_slave_wait_mem_seq");
     super.new(name);
 endfunction
 
-task fpt_ahb_slave_wait_mem_seq::body();
-    fpt_ahb_slave_transaction req;
+function bit fpt_ahb_slave_wait_mem_seq::resolve_wait_cycles(
+    fpt_ahb_slave_transaction req
+    );
+    int unsigned resolved_wait_cycles;
 
-    req = fpt_ahb_slave_transaction::type_id::create("req");
-    start_item(req);
-    req.c_v0_0_context.constraint_mode(0);
-    finish_item(req);
-
-    forever begin
-        get_response(req);
-
-        start_item(req);
-        req.c_v0_0_context.constraint_mode(1);
-        if (!req.randomize()) begin
-            `uvm_error("SEQ_RAND", "Randomization failed")
-        end
-        // The sequence plans response latency only; the Slave Driver owns memory access.
-        req.wait_cycles = $urandom_range(0, 4);
-        `uvm_info("SLV_WAIT",
-                  $sformatf("Planned wait_cycles=%0d for addr='h%0h",
-                            req.wait_cycles, req.addr),
-                  UVM_HIGH)
-        finish_item(req);
-
-        get_response(req);
+    if (!std::randomize(resolved_wait_cycles) with {
+            resolved_wait_cycles inside {[0:4]};
+        }) begin
+        `uvm_error("SEQ_WAIT_RAND", "Legacy WAIT-cycle randomization failed")
+        return 0;
     end
-endtask
+
+    req.wait_cycles = resolved_wait_cycles;
+    `uvm_info("SLV_WAIT",
+              $sformatf("Legacy WAIT resolved to wait_cycles=%0d for addr='h%0h",
+                        req.wait_cycles, req.addr),
+              UVM_HIGH)
+    return 1;
+endfunction : resolve_wait_cycles
 
 `endif // FPT_AHB_SLAVE_WAIT_MEM_SEQ_SVH

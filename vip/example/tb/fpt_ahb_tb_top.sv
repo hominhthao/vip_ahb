@@ -29,6 +29,8 @@ module fpt_ahb_tb_top;
                       );
 
     assign ahb_if.hready = ahb_if.hreadyout;
+    // Point-to-point policy: Slave 0 is always selected.
+    assign ahb_if.hselx = 1'b1;
 
     initial begin
         uvm_config_db#(virtual fpt_ahb_if)::set(null, "*", "vif", ahb_if);
