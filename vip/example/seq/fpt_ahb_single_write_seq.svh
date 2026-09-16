@@ -31,7 +31,7 @@ task fpt_ahb_single_write_seq::body();
     // Đợi Driver thực thi xong pha dữ liệu
     get_response(req);
 
-    `uvm_info("SEQ_WRITE", $sformatf("Single Write Completed: Wrote data 'h%0h to address 'h%0h", req.write_data, req.addr), UVM_NONE)
+    `uvm_info("SEQ_WRITE", $sformatf("Single Write Completed: Wrote data 'h%0h to address 'h%0h", req.write_data[0], req.addr), UVM_NONE)
 endtask
 
 `endif // FPT_AHB_SINGLE_WRITE_SEQ_SVH

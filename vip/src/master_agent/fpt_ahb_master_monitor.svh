@@ -54,9 +54,11 @@ task fpt_ahb_master_monitor::collect_transactions();
 
         if (cfg.vif.cb_monitor.hready === 1'b1 && data_phase_tx != null) begin
             if (data_phase_tx.direction == FPT_AHB_WRITE) begin
-                data_phase_tx.write_data = cfg.vif.cb_monitor.hwdata;
+                data_phase_tx.write_data = new[1];
+                data_phase_tx.write_data[0] = cfg.vif.cb_monitor.hwdata;
             end else begin
-                data_phase_tx.read_data = cfg.vif.cb_monitor.hrdata;
+                data_phase_tx.read_data = new[1];
+                data_phase_tx.read_data[0] = cfg.vif.cb_monitor.hrdata;
             end
 
             data_phase_tx.response = (cfg.vif.cb_monitor.hresp == 1'b1) ? FPT_AHB_ERROR : FPT_AHB_OKAY;

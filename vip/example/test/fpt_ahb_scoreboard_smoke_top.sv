@@ -75,8 +75,12 @@ endclass
         tx = fpt_ahb_master_transaction::type_id::create("master_observation");
         tx.addr = addr;
         tx.direction = direction;
-        tx.write_data = write_data;
-        tx.read_data = read_data;
+        tx.write_data = new[1];
+        tx.write_data[0] = write_data;
+        if (direction == FPT_AHB_READ) begin
+            tx.read_data = new[1];
+            tx.read_data[0] = read_data;
+        end
         tx.response = response;
         return tx;
     endfunction : make_master

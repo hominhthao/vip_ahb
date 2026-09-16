@@ -84,7 +84,7 @@ task fpt_ahb_master_driver::data_phase_thread();
 
         // --- Bắt đầu Data Phase ---
         if (current_tx.direction == FPT_AHB_WRITE) begin
-            cfg.vif.cb_master.hwdata <= current_tx.write_data;
+            cfg.vif.cb_master.hwdata <= current_tx.write_data[0];
         end
 
         // Chờ Slave phản hồi Data Phase
@@ -100,7 +100,8 @@ task fpt_ahb_master_driver::data_phase_thread();
         end while (cfg.vif.cb_master.hready === 1'b0);
 
         if (current_tx.direction == FPT_AHB_READ) begin
-            current_tx.read_data = cfg.vif.cb_master.hrdata;
+            current_tx.read_data = new[1];
+            current_tx.read_data[0] = cfg.vif.cb_master.hrdata;
         end
         current_tx.response = (cfg.vif.cb_master.hresp == 1'b1) ? FPT_AHB_ERROR : FPT_AHB_OKAY;
 

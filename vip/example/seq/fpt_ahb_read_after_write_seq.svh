@@ -39,10 +39,10 @@ task fpt_ahb_read_after_write_seq::body();
     finish_item(req_read);
 
     get_response(req_write);
-    `uvm_info("SEQ_WRITE", $sformatf("Wrote data 'h%0h to address 'h%0h", req_write.write_data, req_write.addr), UVM_NONE)
+    `uvm_info("SEQ_WRITE", $sformatf("Wrote data 'h%0h to address 'h%0h", req_write.write_data[0], req_write.addr), UVM_NONE)
 
     get_response(req_read);
-    `uvm_info("SEQ_READ", $sformatf("Read data 'h%0h from address 'h%0h", req_read.read_data, req_read.addr), UVM_NONE)
+    `uvm_info("SEQ_READ", $sformatf("Read data 'h%0h from address 'h%0h", req_read.read_data[0], req_read.addr), UVM_NONE)
 
 endtask
 

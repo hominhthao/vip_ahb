@@ -78,6 +78,8 @@ function void fpt_ahb_scoreboard::check_transfer(
     int unsigned mismatch_count_before;
     bit          request_matches;
     data_t expected_data;
+    data_t master_write_data;
+    logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] master_read_data;
 
     mismatch_count_before = mismatch_count;
     request_matches = 1'b1;
@@ -88,6 +90,13 @@ function void fpt_ahb_scoreboard::check_transfer(
         return;
     end
 
+    master_write_data = '0;
+    master_read_data = 'x;
+    if (master_tx.write_data.size() > 0)
+        master_write_data = master_tx.write_data[0];
+    if (master_tx.read_data.size() > 0)
+        master_read_data = master_tx.read_data[0];
+
     `uvm_info("FPT_AHB_SCB_COMPARE",
               $sformatf(
                         {"BEGIN transfer #%0d\n",
@@ -97,7 +106,7 @@ function void fpt_ahb_scoreboard::check_transfer(
                          "write_data=0x%0h read_data=0x%0h response=%s wait_cycles=%0d"},
                         checked_count + 1,
                         master_tx.addr, master_tx.direction.name(), master_tx.size.name(),
-                        master_tx.burst.name(), master_tx.write_data, master_tx.read_data,
+                        master_tx.burst.name(), master_write_data, master_read_data,
                         master_tx.response.name(),
                         slave_tx.addr, slave_tx.direction.name(), slave_tx.size.name(),
                         slave_tx.burst.name(), slave_tx.write_data, slave_tx.read_data,
@@ -124,10 +133,15 @@ function void fpt_ahb_scoreboard::check_transfer(
         request_matches = 1'b0;
     end
     if (master_tx.direction == FPT_AHB_WRITE &&
-        slave_tx.direction == FPT_AHB_WRITE &&
-        master_tx.write_data !== slave_tx.write_data) begin
+        master_tx.write_data.size() != 1) begin
+        report_mismatch($sformatf("WRITE request at 0x%0h has %0d payload beats; expected 1",
+                                  master_tx.addr, master_tx.write_data.size()));
+        request_matches = 1'b0;
+    end else if (master_tx.direction == FPT_AHB_WRITE &&
+                 slave_tx.direction == FPT_AHB_WRITE &&
+                 master_write_data !== slave_tx.write_data) begin
         report_mismatch($sformatf("Write data mismatch at 0x%0h: master=0x%0h slave=0x%0h",
-                                  master_tx.addr, master_tx.write_data,
+                                  master_tx.addr, master_write_data,
                                   slave_tx.write_data));
         request_matches = 1'b0;
     end
@@ -145,10 +159,14 @@ function void fpt_ahb_scoreboard::check_transfer(
                       $sformatf(
                                 {"WRITE addr=0x%0h expected(master)=0x%0h ",
                                  "actual(slave)=0x%0h; updating reference memory"},
-                                master_tx.addr, master_tx.write_data,
+                                master_tx.addr, master_write_data,
                                 slave_tx.write_data), UVM_LOW)
-            reference_memory[master_tx.addr] = master_tx.write_data;
+            reference_memory[master_tx.addr] = master_write_data;
         end else if (master_tx.direction == FPT_AHB_READ) begin
+            if (master_tx.read_data.size() != 1)
+                report_mismatch($sformatf(
+                                          "Completed READ at 0x%0h has %0d result beats; expected 1",
+                                          master_tx.addr, master_tx.read_data.size()));
             if (reference_memory.exists(master_tx.addr))
                 expected_data = reference_memory[master_tx.addr];
             else
@@ -158,17 +176,17 @@ function void fpt_ahb_scoreboard::check_transfer(
                       $sformatf(
                                 {"READ addr=0x%0h expected(reference)=0x%0h ",
                                  "actual(master HRDATA)=0x%0h actual(slave HRDATA)=0x%0h"},
-                                master_tx.addr, expected_data, master_tx.read_data,
+                                master_tx.addr, expected_data, master_read_data,
                                 slave_tx.read_data), UVM_LOW)
 
-            if (master_tx.read_data !== slave_tx.read_data)
+            if (master_read_data !== slave_tx.read_data)
                 report_mismatch($sformatf(
                                           "Observed read data mismatch at 0x%0h: master=0x%0h slave=0x%0h",
-                                          master_tx.addr, master_tx.read_data, slave_tx.read_data));
-            if (master_tx.read_data !== expected_data)
+                                          master_tx.addr, master_read_data, slave_tx.read_data));
+            if (master_read_data !== expected_data)
                 report_mismatch($sformatf(
                                           "Master read mismatch at 0x%0h: expected=0x%0h actual=0x%0h",
-                                          master_tx.addr, expected_data, master_tx.read_data));
+                                          master_tx.addr, expected_data, master_read_data));
             if (slave_tx.read_data !== expected_data)
                 report_mismatch($sformatf(
                                           "Slave read mismatch at 0x%0h: expected=0x%0h actual=0x%0h",
@@ -182,7 +200,7 @@ function void fpt_ahb_scoreboard::check_transfer(
                   $sformatf(
                             {"READ addr=0x%0h response=ERROR; read_data comparison skipped ",
                              "master=0x%0h slave=0x%0h"},
-                            master_tx.addr, master_tx.read_data, slave_tx.read_data),
+                            master_tx.addr, master_read_data, slave_tx.read_data),
                   UVM_LOW)
     end
 

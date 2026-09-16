@@ -1,23 +1,24 @@
 `ifndef FPT_AHB_MASTER_TRANSACTION_SVH
 `define FPT_AHB_MASTER_TRANSACTION_SVH
 
-// One item requests one AHB-Lite SINGLE, WORD-sized transfer.
+// One item represents one complete Master burst request. The currently
+// verified contract remains a one-beat, WORD-sized SINGLE request.
 class fpt_ahb_master_transaction extends uvm_sequence_item;
 
     `uvm_object_utils(fpt_ahb_master_transaction)
 
+    // Burst start address. Per-beat address generation is owned elsewhere.
     rand bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr;
 
-    // Used only for WRITE; READ does not constrain this unused payload.
-    rand bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data;
+    // One payload element per requested WRITE beat.
+    rand bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data[];
     rand fpt_ahb_direction_e direction;
 
     rand fpt_ahb_size_e size = FPT_AHB_WORD;
     rand fpt_ahb_burst_e burst = FPT_AHB_SINGLE;
 
-    // Results are populated by the response/observation path, not randomization.
-    // Interpret them only after transfer completion; read_data is for READ only.
-    logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data;
+    // One runtime-derived result per completed READ beat; never randomized.
+    logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data[];
     fpt_ahb_response_e response;
 
     constraint c_word_alignment {
@@ -26,6 +27,7 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
 
     // Declarative constraints preserve the currently verified WORD/SINGLE scope.
     constraint c_v0_0_transfer {
+        write_data.size() == 1;
         size == FPT_AHB_WORD;
         burst == FPT_AHB_SINGLE;
     }
@@ -62,12 +64,17 @@ endfunction : do_copy
 function void fpt_ahb_master_transaction::do_print(uvm_printer printer);
     super.do_print(printer);
     printer.print_field("addr", addr, $bits(addr), UVM_HEX);
-    printer.print_field("write_data", write_data, $bits(write_data), UVM_HEX);
+    printer.print_field("write_data_count", write_data.size(), 32, UVM_DEC);
+    foreach (write_data[i])
+        printer.print_field($sformatf("write_data[%0d]", i), write_data[i],
+                            $bits(write_data[i]), UVM_HEX);
     printer.print_string("direction", direction.name());
     printer.print_string("size", size.name());
     printer.print_string("burst", burst.name());
-    // These are stored values; printing does not imply transfer completion.
-    printer.print_field("read_data", read_data, $bits(read_data), UVM_HEX);
+    printer.print_field("read_data_count", read_data.size(), 32, UVM_DEC);
+    foreach (read_data[i])
+        printer.print_field($sformatf("read_data[%0d]", i), read_data[i],
+                            $bits(read_data[i]), UVM_HEX);
     if ($isunknown(response))
         printer.print_field("response", response, $bits(response), UVM_BIN);
     else
@@ -89,9 +96,16 @@ function bit fpt_ahb_master_transaction::do_compare(uvm_object rhs, uvm_comparer
     same &= comparer.compare_field("addr", addr, rhs_tr.addr, $bits(addr), UVM_HEX);
     same &= comparer.compare_field("size", size, rhs_tr.size, $bits(size));
     same &= comparer.compare_field("burst", burst, rhs_tr.burst, $bits(burst));
-    if (direction == FPT_AHB_WRITE && rhs_tr.direction == FPT_AHB_WRITE)
-        same &= comparer.compare_field("write_data", write_data, rhs_tr.write_data,
-                                       $bits(write_data), UVM_HEX);
+    if (direction == FPT_AHB_WRITE && rhs_tr.direction == FPT_AHB_WRITE) begin
+        same &= comparer.compare_field("write_data.size", write_data.size(),
+                                       rhs_tr.write_data.size(), 32, UVM_DEC);
+        for (int unsigned i = 0;
+             i < write_data.size() && i < rhs_tr.write_data.size(); i++) begin
+            same &= comparer.compare_field($sformatf("write_data[%0d]", i),
+                                           write_data[i], rhs_tr.write_data[i],
+                                           $bits(write_data[i]), UVM_HEX);
+        end
+    end
     return same;
 endfunction : do_compare
 

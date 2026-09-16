@@ -37,7 +37,7 @@ task fpt_ahb_random_rw_seq::body();
 
         `uvm_info("SEQ_ITEM", $sformatf("Trans %0d/%0d: %s addr='h%0h data='h%0h",
                                         i+1, num_trans, req.direction.name(), req.addr,
-                                        (req.direction == FPT_AHB_WRITE) ? req.write_data : req.read_data), UVM_NONE)
+                                        (req.direction == FPT_AHB_WRITE) ? req.write_data[0] : req.read_data[0]), UVM_NONE)
     end
 
     `uvm_info("SEQ", "Random R/W Sequence Completed.", UVM_NONE)
