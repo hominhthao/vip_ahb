@@ -12,8 +12,8 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
     rand bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data;
     rand fpt_ahb_direction_e direction;
 
-    fpt_ahb_size_e size = FPT_AHB_WORD;
-    fpt_ahb_burst_e burst = FPT_AHB_SINGLE;
+    rand fpt_ahb_size_e size = FPT_AHB_WORD;
+    rand fpt_ahb_burst_e burst = FPT_AHB_SINGLE;
 
     // Results are populated by the response/observation path, not randomization.
     // Interpret them only after transfer completion; read_data is for READ only.
@@ -24,7 +24,7 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
         addr[1:0] == 2'b00;
     }
 
-    // Non-random state is checked, not repaired, by randomize().
+    // Declarative constraints preserve the currently verified WORD/SINGLE scope.
     constraint c_v0_0_transfer {
         size == FPT_AHB_WORD;
         burst == FPT_AHB_SINGLE;
