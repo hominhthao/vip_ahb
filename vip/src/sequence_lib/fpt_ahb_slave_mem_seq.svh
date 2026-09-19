@@ -78,7 +78,7 @@ task fpt_ahb_slave_mem_seq::body();
 
         // 2. Nhận lệnh, Randomize và chuẩn bị phản hồi
         start_item(req);
-        req.c_v0_0_context.constraint_mode(1); // Bật constraint lại vì req đã có addr chuẩn
+        req.c_v0_0_context.constraint_mode(0); // Bật constraint lại vì req đã có addr chuẩn
 
         // This sequence owns response selection, but Common Memory/Driver owns
         // READ data and the configured WAIT policy owns response latency.

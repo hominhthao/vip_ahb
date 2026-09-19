@@ -29,33 +29,43 @@ endfunction
 // Build Phase: Creates environment, configs and sets up default sequences
 //------------------------------------------------------------------------------
 function void fpt_ahb_base_test::build_phase(uvm_phase phase);
-    virtual fpt_ahb_if vif;
+    virtual fpt_ahb_if vif_m0, vif_m1, vif_s0, vif_s1;
 
     super.build_phase(phase);
 
-    if (!uvm_config_db#(virtual fpt_ahb_if)::get(this, "", "vif", vif)) begin
-        `uvm_fatal("NO_VIF", "Virtual interface not found in config_db. Did you set it in Top?")
-    end
+    if (!uvm_config_db#(virtual fpt_ahb_if)::get(this, "", "vif_m0", vif_m0))
+        `uvm_fatal("NO_VIF", "vif_m0 not found")
+    if (!uvm_config_db#(virtual fpt_ahb_if)::get(this, "", "vif_m1", vif_m1))
+        `uvm_fatal("NO_VIF", "vif_m1 not found")
+    if (!uvm_config_db#(virtual fpt_ahb_if)::get(this, "", "vif_s0", vif_s0))
+        `uvm_fatal("NO_VIF", "vif_s0 not found")
+    if (!uvm_config_db#(virtual fpt_ahb_if)::get(this, "", "vif_s1", vif_s1))
+        `uvm_fatal("NO_VIF", "vif_s1 not found")
 
     env_cfg = fpt_ahb_env_cfg::type_id::create("env_cfg");
-    env_cfg.num_masters = 1;
-    env_cfg.num_slaves = 1;
+    env_cfg.num_masters = 2;
+    env_cfg.num_slaves = 2;
 
-    // Phẫu thuật 1: Cho phép truyền cấu hình Performance (Delay) từ Command Line
     if ($test$plusargs("PERF_MODE=LOW")) begin
         env_cfg.perf_mode = FPT_AHB_PERF_LOW;
-        `uvm_info("CFG", "Running in PERF_MODE=LOW (Random Slave Delay enabled)", UVM_LOW)
     end else begin
         env_cfg.perf_mode = FPT_AHB_PERF_HIGH;
-        `uvm_info("CFG", "Running in PERF_MODE=HIGH (Zero Slave Delay)", UVM_LOW)
     end
 
     env_cfg.create_agent_cfgs();
+    
+    env_cfg.slave_cfgs[0].addr_start = 32'h0000_0000;
+    env_cfg.slave_cfgs[0].addr_end   = 32'h0000_0FFF;
+    env_cfg.slave_cfgs[1].addr_start = 32'h0000_1000;
+    env_cfg.slave_cfgs[1].addr_end   = 32'h0000_1FFF;
 
+    env_cfg.master_cfgs[0].vif = vif_m0;
+    env_cfg.master_cfgs[1].vif = vif_m1;
+    env_cfg.slave_cfgs[0].vif = vif_s0;
+    env_cfg.slave_cfgs[1].vif = vif_s1;
+    
     master_cfg = env_cfg.master_cfgs[0];
     slave_cfg = env_cfg.slave_cfgs[0];
-    master_cfg.vif = vif;
-    slave_cfg.vif = vif;
 
     uvm_config_db#(fpt_ahb_env_cfg)::set(this, "env", "cfg", env_cfg);
 
@@ -64,6 +74,7 @@ function void fpt_ahb_base_test::build_phase(uvm_phase phase);
                                             "env.slave_agents[0].sequencer.run_phase",
                                             "default_sequence",
                                             fpt_ahb_slave_mem_seq::type_id::get());
+    uvm_config_db#(uvm_object_wrapper)::set(this, "env.slave_agents[1].sequencer.run_phase", "default_sequence", fpt_ahb_slave_mem_seq::type_id::get());
 
     // Create the Environment only after its configuration is complete.
     env = fpt_ahb_env::type_id::create("env", this);

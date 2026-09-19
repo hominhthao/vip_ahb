@@ -1,7 +1,7 @@
 `ifndef FPT_AHB_PREDICTOR_SVH
 `define FPT_AHB_PREDICTOR_SVH
 
-class fpt_ahb_predictor extends uvm_subscriber #(fpt_ahb_master_transaction);
+class fpt_ahb_predictor extends uvm_subscriber #(fpt_ahb_beat_transaction);
     `uvm_component_utils(fpt_ahb_predictor)
 
     typedef bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr_t;
@@ -13,7 +13,7 @@ class fpt_ahb_predictor extends uvm_subscriber #(fpt_ahb_master_transaction);
 
     extern function new(string name = "fpt_ahb_predictor", uvm_component parent = null);
     extern virtual function void build_phase(uvm_phase phase);
-    extern virtual function void write(fpt_ahb_master_transaction t);
+    extern virtual function void write(fpt_ahb_beat_transaction t);
 endclass : fpt_ahb_predictor
 
 //---------------
@@ -35,7 +35,7 @@ endfunction : build_phase
 //---------------
 // Description: Implementation of write
 //---------------
-function void fpt_ahb_predictor::write(fpt_ahb_master_transaction t);
+function void fpt_ahb_predictor::write(fpt_ahb_beat_transaction t);
     data_t expected_data;
     
     if (t == null) return;

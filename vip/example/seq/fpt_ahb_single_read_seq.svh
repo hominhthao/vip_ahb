@@ -27,7 +27,7 @@ endfunction
 //------------------------------------------------------------------------------
 function void fpt_ahb_single_read_seq::process_response(fpt_ahb_master_transaction rsp);
     `uvm_info("SEQ_READ", $sformatf("Read data 'h%0h from address 'h%0h (response=%s)", 
-                                     rsp.read_data, rsp.addr, rsp.response.name()), UVM_HIGH)
+                                     rsp.read_data[0], rsp.addr, rsp.response.name()), UVM_HIGH)
 endfunction
 
 //------------------------------------------------------------------------------

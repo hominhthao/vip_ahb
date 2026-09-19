@@ -27,7 +27,7 @@ endfunction
 //------------------------------------------------------------------------------
 function void fpt_ahb_single_write_seq::process_response(fpt_ahb_master_transaction rsp);
     `uvm_info("SEQ_WRITE", $sformatf("Wrote data 'h%0h to address 'h%0h (response=%s)", 
-                                     rsp.write_data, rsp.addr, rsp.response.name()), UVM_HIGH)
+                                     rsp.write_data[0], rsp.addr, rsp.response.name()), UVM_HIGH)
 endfunction
 
 //------------------------------------------------------------------------------

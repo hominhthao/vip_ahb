@@ -9,6 +9,7 @@ class fpt_ahb_env extends uvm_env;
     fpt_ahb_slave_agent  slave_agents[];
     fpt_ahb_system_monitor system_monitor;
     fpt_ahb_system_checker system_checker;
+    fpt_ahb_coverage_collector coverage_collector;
     fpt_ahb_predictor    predictor;
     fpt_ahb_common_memory mem;
 
@@ -60,9 +61,11 @@ function void fpt_ahb_env::build_phase(uvm_phase phase);
     end
     
     system_monitor = fpt_ahb_system_monitor::type_id::create("system_monitor", this);
+    uvm_config_db#(fpt_ahb_env_cfg)::set(this, "system_monitor", "cfg", cfg);
 
     // v0.1 System Checker and optional Predictor
     system_checker = fpt_ahb_system_checker::type_id::create("system_checker", this);
+    coverage_collector = fpt_ahb_coverage_collector::type_id::create("coverage_collector", this);
     system_checker.has_predictor = cfg.has_predictor;
     
     if (cfg.has_predictor) begin
@@ -76,20 +79,27 @@ endfunction
 function void fpt_ahb_env::connect_phase(uvm_phase phase);
     super.connect_phase(phase);
 
-    // V0.1 architecture supports checking 1M/1S topology
-    if (master_agents.size() > 0) begin
-        master_agents[0].ap.connect(system_checker.master_fifo.analysis_export);
+    // 1. All Local Agents connect ONLY to System Monitor
+    foreach (master_agents[i]) begin
+        master_agents[i].ap.connect(system_monitor.master_fifos[i].analysis_export);
         if (cfg.has_predictor) begin
-            master_agents[0].ap.connect(predictor.analysis_export);
+            master_agents[i].ap.connect(predictor.analysis_export);
         end
     end
 
-    if (slave_agents.size() > 0) begin
-        slave_agents[0].ap.connect(system_checker.slave_fifo.analysis_export);
+    foreach (slave_agents[i]) begin
+        slave_agents[i].ap.connect(system_monitor.slave_fifos[i].analysis_export);
     end
-    
-    if (cfg.has_predictor) begin
-        predictor.expected_ap.connect(system_checker.expected_fifo.analysis_export);
+
+    // 2. System Monitor broadcasts fully routed sys_tr to System Checker
+    if (cfg.has_system_checker) begin
+        system_monitor.sys_ap.connect(system_checker.sys_master_fifo.analysis_export);
+        system_monitor.sys_ap.connect(coverage_collector.analysis_export);
+        system_monitor.sys_slave_ap.connect(system_checker.sys_slave_fifo.analysis_export);
+        
+        if (cfg.has_predictor) begin
+            predictor.expected_ap.connect(system_checker.expected_fifo.analysis_export);
+        end
     end
 endfunction
 

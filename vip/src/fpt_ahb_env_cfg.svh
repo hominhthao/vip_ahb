@@ -72,14 +72,6 @@ function bit fpt_ahb_env_cfg::validate();
         return 0;
     end
 
-    if (num_masters != 1 || num_slaves != 1) begin
-        `uvm_fatal("FPT_AHB_ENV_CFG_TOPOLOGY",
-                   $sformatf({"AHB VIP v0.1 currently verifies only 1 Master / 1 Slave; ",
-                              "configured num_masters=%0d num_slaves=%0d"},
-                             num_masters, num_slaves))
-        return 0;
-    end
-
     if (master_cfgs.size() != num_masters || slave_cfgs.size() != num_slaves) begin
         `uvm_fatal("FPT_AHB_ENV_CFG_ARRAY",
                    $sformatf({"Agent configuration array size mismatch: ",

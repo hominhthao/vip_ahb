@@ -13,8 +13,11 @@ import subprocess
 TESTS = {
     "wait": "fpt_ahb_directed_wait_test",
     "fpt_ahb_single_write_test": "fpt_ahb_single_write_test",
+    "fpt_ahb_single_read_test": "fpt_ahb_single_read_test",
     "fpt_ahb_read_after_write_test": "fpt_ahb_read_after_write_test",
     "fpt_ahb_random_rw_test": "fpt_ahb_random_rw_test",
+    "fpt_ahb_directed_burst_test": "fpt_ahb_directed_burst_test",
+    "fpt_ahb_multi_collision_test": "fpt_ahb_multi_collision_test",
 }
 
 

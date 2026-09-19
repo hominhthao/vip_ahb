@@ -28,10 +28,10 @@ endfunction
 function void fpt_ahb_random_rw_seq::process_response(fpt_ahb_master_transaction rsp);
     if (rsp.direction == FPT_AHB_WRITE) begin
         `uvm_info("SEQ_RW", $sformatf("Wrote data 'h%0h to address 'h%0h (response=%s)", 
-                                         rsp.write_data, rsp.addr, rsp.response.name()), UVM_HIGH)
+                                         rsp.write_data[0], rsp.addr, rsp.response.name()), UVM_HIGH)
     end else begin
         `uvm_info("SEQ_RW", $sformatf("Read data 'h%0h from address 'h%0h (response=%s)", 
-                                         rsp.read_data, rsp.addr, rsp.response.name()), UVM_HIGH)
+                                         rsp.read_data[0], rsp.addr, rsp.response.name()), UVM_HIGH)
     end
 endfunction
 

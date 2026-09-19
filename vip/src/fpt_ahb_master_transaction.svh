@@ -26,6 +26,10 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
     logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data[];
     fpt_ahb_response_e response;
 
+    constraint c_valid_address {
+        addr <= 32'h0000_1FFF;
+    }
+
     constraint c_word_alignment {
         addr[1:0] == 2'b00;
     }

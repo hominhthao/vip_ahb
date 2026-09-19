@@ -13,6 +13,9 @@ class fpt_ahb_slave_agent_cfg extends uvm_object;
     int unsigned min_wait_cycles   = 0;
     int unsigned max_wait_cycles   = 0;
 
+    logic [31:0] addr_start = 32'h0000_0000;
+    logic [31:0] addr_end   = 32'hFFFF_FFFF;
+
     virtual fpt_ahb_if vif;
 
     extern function new(string name = "fpt_ahb_slave_agent_cfg");
