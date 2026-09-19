@@ -25,9 +25,13 @@ task fpt_ahb_read_after_write_test::run_phase(uvm_phase phase);
 
     seq = fpt_ahb_read_after_write_seq::type_id::create("seq");
 
+    if (!seq.randomize()) begin
+        `uvm_error("TEST", "Failed to randomize sequence")
+    end
+
     `uvm_info("TEST", "Starting Read After Write Sequence...", UVM_LOW)
 
-    run_sequence_and_wait(seq, 2);
+    run_sequence_and_wait(seq, seq.num_trans * 2);
 
     `uvm_info("TEST", "Read After Write Sequence Completed.", UVM_LOW)
 

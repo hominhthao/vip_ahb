@@ -15,9 +15,7 @@ endfunction
 
 function void fpt_ahb_random_rw_test::build_phase(uvm_phase phase);
     super.build_phase(phase);
-    env_cfg.slave_cfgs[0].wait_mode = FPT_AHB_RANDOM_WAIT;
-    env_cfg.slave_cfgs[0].min_wait_cycles = 0;
-    env_cfg.slave_cfgs[0].max_wait_cycles = 4;
+    // Configuration is now fully managed by base_test via +PERF_MODE plusarg
 endfunction
 
 task fpt_ahb_random_rw_test::run_phase(uvm_phase phase);

@@ -13,8 +13,11 @@ import subprocess
 TESTS = {
     "wait": "fpt_ahb_directed_wait_test",
     "fpt_ahb_single_write_test": "fpt_ahb_single_write_test",
+    "fpt_ahb_single_read_test": "fpt_ahb_single_read_test",
     "fpt_ahb_read_after_write_test": "fpt_ahb_read_after_write_test",
     "fpt_ahb_random_rw_test": "fpt_ahb_random_rw_test",
+    "fpt_ahb_directed_burst_test": "fpt_ahb_directed_burst_test",
+    "fpt_ahb_multi_collision_test": "fpt_ahb_multi_collision_test",
 }
 
 
@@ -34,10 +37,10 @@ def parse_args(argv=None):
     parser.add_argument("--dry-run", action="store_true",
                         help="print build and simulation commands without running them")
     parser.set_defaults(fsdb=False)
-    args = parser.parse_args(argv)
+    args, extra_args = parser.parse_known_args(argv)
 
     if args.list:
-        return args
+        return args, extra_args
     if args.test not in TESTS:
         parser.error(f"unknown test '{args.test}'; use --list to see supported tests")
     if args.test == "wait":
@@ -49,7 +52,7 @@ def parse_args(argv=None):
             parser.error("--wait must be non-negative")
     elif args.direction is not None or args.wait is not None:
         parser.error("--dir and --wait are supported only with --test wait")
-    return args
+    return args, extra_args
 
 
 def build_directory(project_root, args):
@@ -80,7 +83,7 @@ def compile_command(project_root, fsdb):
     return command
 
 
-def simulation_command(args, log_name):
+def simulation_command(args, extra_args, log_name):
     command = [
         "./simv", f"+UVM_TESTNAME={TESTS[args.test]}",
     ]
@@ -93,6 +96,8 @@ def simulation_command(args, log_name):
         f"+ntb_random_seed={args.seed}", "+UVM_NO_RELNOTES",
         "-no_save", "-cm", "assert", "-l", log_name,
     ]
+    if extra_args:
+        command.extend(extra_args)
     return command
 
 
@@ -109,7 +114,7 @@ def run_stage(stage, command, build_dir, environment):
 
 
 def main(argv=None):
-    args = parse_args(argv)
+    args, extra_args = parse_args(argv)
     if args.list:
         print("Available tests:")
         for name, uvm_test in TESTS.items():
@@ -131,7 +136,7 @@ def main(argv=None):
         log_name = "run.log"
 
     build_cmd = compile_command(project_root, args.fsdb)
-    run_cmd = simulation_command(args, log_name)
+    run_cmd = simulation_command(args, extra_args, log_name)
     print(f"Build directory: {build_dir}", flush=True)
     if args.dry_run:
         print(f"compile: {shlex.join(build_cmd)}")

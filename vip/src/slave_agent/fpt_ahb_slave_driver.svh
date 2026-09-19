@@ -120,6 +120,8 @@ task fpt_ahb_slave_driver::data_phase_thread();
 
         if (req.direction == FPT_AHB_READ) begin
             cfg.vif.cb_slave.hrdata <= req.read_data;
+        end else begin
+            cfg.vif.cb_slave.hrdata <= 32'h0;
         end
 
         @(cfg.vif.cb_slave);

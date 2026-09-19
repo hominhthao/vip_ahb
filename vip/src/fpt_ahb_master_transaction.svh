@@ -12,7 +12,10 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
 
     // One payload element per requested WRITE beat.
     rand bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data[];
+
     rand fpt_ahb_direction_e direction;
+    
+    rand int unsigned master_delay;
 
     rand fpt_ahb_size_e size = FPT_AHB_WORD;
     rand fpt_ahb_burst_e burst = FPT_AHB_SINGLE;
@@ -22,6 +25,10 @@ class fpt_ahb_master_transaction extends uvm_sequence_item;
     // One runtime-derived result per completed READ beat; never randomized.
     logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data[];
     fpt_ahb_response_e response;
+
+    constraint c_valid_address {
+        addr <= 32'h0000_1FFF;
+    }
 
     constraint c_word_alignment {
         addr[1:0] == 2'b00;

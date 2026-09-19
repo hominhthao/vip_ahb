@@ -1,20 +1,20 @@
-`ifndef FPT_AHB_SCOREBOARD_SMOKE_TOP_SV
-`define FPT_AHB_SCOREBOARD_SMOKE_TOP_SV
+`ifndef FPT_AHB_SYSTEM_CHECKER_SMOKE_TOP_SV
+`define FPT_AHB_SYSTEM_CHECKER_SMOKE_TOP_SV
 
 `include "uvm_macros.svh"
 
-module fpt_ahb_scoreboard_smoke_top;
+module fpt_ahb_system_checker_smoke_top;
     import uvm_pkg::*;
     import fpt_ahb_package::*;
     import fpt_ahb_example_package::*;
 
-    class fpt_ahb_scoreboard_expected_error_catcher extends uvm_report_catcher;
+    class fpt_ahb_system_checker_expected_error_catcher extends uvm_report_catcher;
         int unsigned caught_count;
 
         extern virtual function action_e catch();
     endclass
 
-    function action_e fpt_ahb_scoreboard_expected_error_catcher::catch();
+    function action_e fpt_ahb_system_checker_expected_error_catcher::catch();
         if (get_severity() == UVM_ERROR && (get_id() == "FPT_AHB_CHK" || get_id() == "FPT_AHB_SCB")) begin
             caught_count++;
             set_severity(UVM_INFO);
@@ -22,31 +22,31 @@ module fpt_ahb_scoreboard_smoke_top;
         return THROW;
     endfunction
 
-    class fpt_ahb_scoreboard_smoke_test extends uvm_test;
-        `uvm_component_utils(fpt_ahb_scoreboard_smoke_test)
+    class fpt_ahb_system_checker_smoke_test extends uvm_test;
+        `uvm_component_utils(fpt_ahb_system_checker_smoke_test)
 
         fpt_ahb_system_checker system_checker;
         fpt_ahb_predictor predictor;
-        fpt_ahb_scoreboard_expected_error_catcher error_catcher;
+        fpt_ahb_system_checker_expected_error_catcher error_catcher;
 
-        extern function new(string name = "fpt_ahb_scoreboard_smoke_test",
+        extern function new(string name = "fpt_ahb_system_checker_smoke_test",
                             uvm_component parent = null);
     extern virtual function void build_phase(uvm_phase phase);
     extern virtual task run_phase(uvm_phase phase);
     extern task submit_pair(
-                            fpt_ahb_beat_transaction master_tx,
-                            fpt_ahb_beat_transaction slave_tx,
+                            fpt_ahb_master_transaction master_tx,
+                            fpt_ahb_slave_transaction slave_tx,
                             input bit expect_match,
                             input string label
                             );
-    extern function fpt_ahb_beat_transaction make_master(
+    extern function fpt_ahb_master_transaction make_master(
                                                            input bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0]   addr,
                                                            input                                     fpt_ahb_direction_e direction,
                                                            input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0]   write_data,
                                                            input logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data,
                                                            input                                     fpt_ahb_response_e response
                                                            );
-    extern function fpt_ahb_beat_transaction make_slave(
+    extern function fpt_ahb_slave_transaction make_slave(
                                                          input bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr,
                                                          input                                   fpt_ahb_direction_e direction,
                                                          input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data,
@@ -55,14 +55,14 @@ module fpt_ahb_scoreboard_smoke_top;
                                                          );
 endclass
 
-    function fpt_ahb_scoreboard_smoke_test::new(
-                                                string name = "fpt_ahb_scoreboard_smoke_test",
+    function fpt_ahb_system_checker_smoke_test::new(
+                                                string name = "fpt_ahb_system_checker_smoke_test",
                                                 uvm_component parent = null
                                                 );
         super.new(name, parent);
     endfunction : new
 
-    function void fpt_ahb_scoreboard_smoke_test::build_phase(uvm_phase phase);
+    function void fpt_ahb_system_checker_smoke_test::build_phase(uvm_phase phase);
         super.build_phase(phase);
         system_checker = fpt_ahb_system_checker::type_id::create("system_checker", this);
         predictor = fpt_ahb_predictor::type_id::create("predictor", this);
@@ -71,52 +71,46 @@ endclass
         uvm_report_cb::add(system_checker, error_catcher);
     endfunction : build_phase
 
-    function fpt_ahb_beat_transaction fpt_ahb_scoreboard_smoke_test::make_master(
+    function fpt_ahb_master_transaction fpt_ahb_system_checker_smoke_test::make_master(
                                                                                    input bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0]   addr,
                                                                                    input                                     fpt_ahb_direction_e direction,
                                                                                    input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0]   write_data,
                                                                                    input logic [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data,
                                                                                    input                                     fpt_ahb_response_e response
                                                                                    );
-        fpt_ahb_beat_transaction tx;
+        fpt_ahb_master_transaction tx;
 
-        tx = fpt_ahb_beat_transaction::type_id::create("master_observation");
+        tx = fpt_ahb_master_transaction::type_id::create("master_observation");
         tx.addr = addr;
         tx.direction = direction;
         tx.write_data = write_data;
         tx.read_data = read_data;
-        tx.size = FPT_AHB_WORD;
-        tx.burst = FPT_AHB_SINGLE;
-        tx.trans = FPT_AHB_NONSEQ;
         tx.response = response;
         return tx;
     endfunction : make_master
 
-    function fpt_ahb_beat_transaction fpt_ahb_scoreboard_smoke_test::make_slave(
+    function fpt_ahb_slave_transaction fpt_ahb_system_checker_smoke_test::make_slave(
                                                                                  input bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] addr,
                                                                                  input                                   fpt_ahb_direction_e direction,
                                                                                  input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] write_data,
                                                                                  input bit [`FPT_AHB_VIP_DATA_WIDTH-1:0] read_data,
                                                                                  input                                   fpt_ahb_response_e response
                                                                                  );
-        fpt_ahb_beat_transaction tx;
+        fpt_ahb_slave_transaction tx;
 
-        tx = fpt_ahb_beat_transaction::type_id::create("slave_observation");
+        tx = fpt_ahb_slave_transaction::type_id::create("slave_observation");
         tx.addr = addr;
         tx.direction = direction;
         tx.write_data = write_data;
         tx.read_data = read_data;
-        tx.size = FPT_AHB_WORD;
-        tx.burst = FPT_AHB_SINGLE;
-        tx.trans = FPT_AHB_NONSEQ;
         tx.response = response;
         tx.wait_cycles = 0;
         return tx;
     endfunction : make_slave
 
-    task fpt_ahb_scoreboard_smoke_test::submit_pair(
-                                                    fpt_ahb_beat_transaction master_tx,
-                                                    fpt_ahb_beat_transaction slave_tx,
+    task fpt_ahb_system_checker_smoke_test::submit_pair(
+                                                    fpt_ahb_master_transaction master_tx,
+                                                    fpt_ahb_slave_transaction slave_tx,
                                                     input bit expect_match,
                                                     input string label
                                                     );
@@ -137,9 +131,9 @@ endclass
         $display("PASS: %s", label);
     endtask : submit_pair
 
-    task fpt_ahb_scoreboard_smoke_test::run_phase(uvm_phase phase);
-        fpt_ahb_beat_transaction master_tx;
-        fpt_ahb_beat_transaction slave_tx;
+    task fpt_ahb_system_checker_smoke_test::run_phase(uvm_phase phase);
+        fpt_ahb_master_transaction master_tx;
+        fpt_ahb_slave_transaction slave_tx;
         fpt_ahb_common_memory common_memory;
 
         phase.raise_objection(this);
@@ -234,9 +228,6 @@ endclass
                    system_checker.checked_count, system_checker.passed_count,
                    system_checker.mismatch_count);
 
-        $display("PASS: scoreboard smoke test (checked=%0d passed=%0d mismatches=%0d)",
-                 system_checker.checked_count, system_checker.passed_count,
-                 system_checker.mismatch_count);
         $display("PASS: system_checker smoke test (checked=%0d passed=%0d mismatches=%0d)",
                  system_checker.checked_count, system_checker.passed_count,
                  system_checker.mismatch_count);
@@ -244,8 +235,8 @@ endclass
     endtask : run_phase
 
     initial begin
-        run_test("fpt_ahb_scoreboard_smoke_test");
+        run_test("fpt_ahb_system_checker_smoke_test");
     end
-endmodule : fpt_ahb_scoreboard_smoke_top
+endmodule : fpt_ahb_system_checker_smoke_top
 
-`endif // FPT_AHB_SCOREBOARD_SMOKE_TOP_SV
+`endif // FPT_AHB_SYSTEM_CHECKER_SMOKE_TOP_SV

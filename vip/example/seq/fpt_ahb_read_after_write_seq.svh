@@ -4,8 +4,15 @@
 class fpt_ahb_read_after_write_seq extends fpt_ahb_master_base_seq;
     `uvm_object_utils(fpt_ahb_read_after_write_seq)
 
+    rand int num_trans;
+
+    constraint c_num_trans {
+        num_trans inside {[100:1000]};
+    }
+
     extern function new(string name = "fpt_ahb_read_after_write_seq");
     extern virtual task body();
+    extern virtual function void process_response(fpt_ahb_master_transaction rsp);
 endclass
 
 //------------------------------------------------------------------------------
@@ -16,34 +23,46 @@ function fpt_ahb_read_after_write_seq::new(string name = "fpt_ahb_read_after_wri
 endfunction
 
 //------------------------------------------------------------------------------
-// Body: Demonstrates AHB Pipelined Sequence Execution
+// Response Handler
+//------------------------------------------------------------------------------
+function void fpt_ahb_read_after_write_seq::process_response(fpt_ahb_master_transaction rsp);
+    if (rsp.direction == FPT_AHB_WRITE) begin
+        `uvm_info("SEQ_RAW", $sformatf("Wrote data 'h%0h to address 'h%0h (response=%s)", 
+                                         rsp.write_data[0], rsp.addr, rsp.response.name()), UVM_HIGH)
+    end else begin
+        `uvm_info("SEQ_RAW", $sformatf("Read data 'h%0h from address 'h%0h (response=%s)", 
+                                         rsp.read_data[0], rsp.addr, rsp.response.name()), UVM_HIGH)
+    end
+endfunction
+
+//------------------------------------------------------------------------------
+// Body: Write then Read Transactions
 //------------------------------------------------------------------------------
 task fpt_ahb_read_after_write_seq::body();
     fpt_ahb_master_transaction req_write;
     fpt_ahb_master_transaction req_read;
     bit [`FPT_AHB_VIP_ADDR_WIDTH-1:0] target_addr;
 
-    req_write = fpt_ahb_master_transaction::type_id::create("req_write");
-    start_item(req_write);
-    if (!req_write.randomize() with { direction == FPT_AHB_WRITE; }) begin
-        `uvm_error("SEQ", "Randomize write failed")
+    `uvm_info("SEQ", $sformatf("Starting RAW Sequence with %0d pairs", num_trans), UVM_NONE)
+
+    for (int i = 0; i < num_trans; i++) begin
+        req_write = fpt_ahb_master_transaction::type_id::create("req_write");
+        start_item(req_write);
+        if (!req_write.randomize() with { direction == FPT_AHB_WRITE; }) begin
+            `uvm_error("SEQ", "Randomize write failed")
+        end
+        target_addr = req_write.addr;
+        finish_item(req_write);
+
+        req_read = fpt_ahb_master_transaction::type_id::create("req_read");
+        start_item(req_read);
+        if (!req_read.randomize() with { direction == FPT_AHB_READ; addr == target_addr; }) begin
+            `uvm_error("SEQ", "Randomize read failed")
+        end
+        finish_item(req_read);
     end
-    target_addr = req_write.addr;
-    finish_item(req_write);
 
-    req_read = fpt_ahb_master_transaction::type_id::create("req_read");
-    start_item(req_read);
-    if (!req_read.randomize() with { direction == FPT_AHB_READ; addr == target_addr; }) begin
-        `uvm_error("SEQ", "Randomize read failed")
-    end
-    finish_item(req_read);
-
-    get_response(req_write);
-    `uvm_info("SEQ_WRITE", $sformatf("Wrote data 'h%0h to address 'h%0h", req_write.write_data[0], req_write.addr), UVM_NONE)
-
-    get_response(req_read);
-    `uvm_info("SEQ_READ", $sformatf("Read data 'h%0h from address 'h%0h", req_read.read_data[0], req_read.addr), UVM_NONE)
-
+    `uvm_info("SEQ", "RAW Sequence Completed.", UVM_LOW)
 endtask
 
 `endif // FPT_AHB_READ_AFTER_WRITE_SEQ_SVH
